@@ -10,7 +10,11 @@
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "build": "vite build",
-    "build:electron": "npm run build && electron-builder",
+    "build:renderer": "vite build",
+    "build:main": "tsc electron/main.ts --outDir dist-electron --target es2020 --module commonjs --esModuleInterop",
+    "build:electron": "npm run build:renderer && npm run build:main && electron-builder",
+    "dist": "npm run build:renderer && npm run build:main && electron-builder --publish=never",
+    "dist:publish": "npm run build:renderer && npm run build:main && electron-builder --publish=always",
     "preview": "vite preview",
     "test": "jest",
     "test:e2e": "cypress open",
@@ -54,6 +58,7 @@
     "cypress": "^13.6.2",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
+    "electron-updater": "^6.1.7",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
@@ -71,21 +76,84 @@
     "appId": "com.syncdaw.app",
     "productName": "Syncdaw",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
-      "node_modules/**/*"
+      "dist-electron/**/*",
+      "node_modules/**/*",
+      "!node_modules/**/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!node_modules/*.d.ts",
+      "!node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "your-github-username",
+      "repo": "syncdraw-app"
+    },
     "mac": {
-      "category": "public.app-category.music"
+      "category": "public.app-category.music",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "Syncdaw"
     },
     "linux": {
-      "target": "AppImage"
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "AudioVideo"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Syncdaw"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     }
   }
 }

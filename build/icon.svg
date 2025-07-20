@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#3B82F6" stroke="#1E40AF" stroke-width="8"/>
+  
+  <!-- Music note symbol -->
+  <path d="M200 180C200 170.059 207.163 162 216.364 162H232.727C241.928 162 249.091 170.059 249.091 180V280C249.091 289.941 241.928 298 232.727 298H216.364C207.163 298 200 289.941 200 280V180Z" fill="white"/>
+  
+  <!-- Sound waves -->
+  <path d="M280 200C290 210 290 250 280 260" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <path d="M300 180C320 200 320 260 300 280" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <path d="M320 160C350 190 350 270 320 300" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- Sync arrows -->
+  <path d="M160 350L180 330L160 310" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M140 330H175" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  
+  <path d="M352 162L332 182L352 202" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M372 182H337" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- App name text -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="white">SYNCDAW</text>
+</svg>

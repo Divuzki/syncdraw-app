@@ -14,10 +14,9 @@ import Button from '../ui/Button'
 interface FileListProps {
   files: any[]
   sessionId: string
-  onFileUpdate: (files: any[]) => void
 }
 
-const FileList: React.FC<FileListProps> = ({ files, sessionId, onFileUpdate }) => {
+const FileList: React.FC<FileListProps> = ({ files }) => {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
 
   const getFileIcon = (fileName: string) => {

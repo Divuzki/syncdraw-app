@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Music, Github, Chrome, Apple } from 'lucide-react'

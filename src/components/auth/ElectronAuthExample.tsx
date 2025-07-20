@@ -1,6 +1,5 @@
-import React from 'react';
 import { useElectronAuth } from '@/hooks/useElectronAuth';
-import { Button } from '@/components/ui/Button';
+import Button from '@/components/ui/Button';
 
 /**
  * Example component demonstrating how to use the useElectronAuth hook

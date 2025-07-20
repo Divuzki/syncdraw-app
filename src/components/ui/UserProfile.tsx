@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LogOut, User, Settings } from 'lucide-react'
 import { User as FirebaseUser } from 'firebase/auth'
-import Button from './Button'
+
 
 interface UserProfileProps {
   user: FirebaseUser

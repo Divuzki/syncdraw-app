@@ -23,8 +23,8 @@ const StudioPage: React.FC = () => {
   const navigate = useNavigate()
   const { sessionId } = useParams<{ sessionId: string }>()
   const { user } = useAuth()
-  const { socket, joinSession, leaveSession, onlineUsers } = useSocket()
-  const { currentSession, setCurrentSession, isOwner, canEdit } = useSession()
+  const { joinSession, leaveSession, onlineUsers } = useSocket()
+  const { setCurrentSession, isOwner } = useSession()
   
   const [isLaunching, setIsLaunching] = useState(true)
   const [vmLaunched, setVmLaunched] = useState(false)

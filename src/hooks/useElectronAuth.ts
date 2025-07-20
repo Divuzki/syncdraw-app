@@ -7,11 +7,7 @@ interface AuthState {
   error: string | null;
 }
 
-interface AuthResult {
-  success: boolean;
-  user?: User;
-  error?: string;
-}
+
 
 // Note: Global Window interface is declared in src/types/electron.d.ts
 

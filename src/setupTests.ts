@@ -56,7 +56,7 @@ const mockElectronAPI = {
 // Mock window.api for authentication
 const mockAPI = {
   auth: {
-    loginWithPopup: (provider: string) => Promise.resolve({
+    loginWithPopup: () => Promise.resolve({
       success: true,
       user: {
         id: 'test-user-id',

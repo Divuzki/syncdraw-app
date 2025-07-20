@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Music, Users, Clock, Settings, Moon, Sun, Monitor } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -11,10 +11,10 @@ import UserProfile from '../components/ui/UserProfile'
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth()
-  const { theme, setTheme, actualTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const { connected } = useSocket()
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [sessions, setSessions] = useState([])
+  const [sessions, setSessions] = useState<any[]>([])
 
   const themeIcons = {
     light: Sun,

@@ -42,6 +42,21 @@ interface ElectronAPI {
   // Theme detection
   getSystemTheme: () => Promise<'light' | 'dark'>;
   onThemeChange: (callback: (theme: 'light' | 'dark') => void) => void;
+  
+  // Auto-updater functionality
+  checkForUpdates: () => Promise<{ success: boolean; updateInfo?: any; error?: string }>;
+  downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
+  installUpdate: () => Promise<{ success: boolean; error?: string }>;
+  
+  // Auto-updater events
+  onUpdateAvailable: (callback: (info: any) => void) => () => void;
+  onDownloadProgress: (callback: (progress: {
+    bytesPerSecond: number;
+    percent: number;
+    transferred: number;
+    total: number;
+  }) => void) => () => void;
+  onUpdateDownloaded: (callback: (info: any) => void) => () => void;
 }
 
 interface AuthAPI {

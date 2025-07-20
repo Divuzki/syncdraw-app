@@ -33,7 +33,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const socketUrl = import.meta.env.VITE_SOCKET_SERVER_URL || 'http://localhost:3001'
       const newSocket = io(socketUrl, {
         auth: {
-          token: user.accessToken,
           userId: user.uid,
           displayName: user.displayName,
           photoURL: user.photoURL,
@@ -62,15 +61,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }))
       })
 
-      newSocket.on('user_joined', ({ sessionId, user: joinedUser }) => {
+      newSocket.on('user_joined', ({ user: joinedUser }) => {
         toast.success(`${joinedUser.displayName} joined the session`)
       })
 
-      newSocket.on('user_left', ({ sessionId, user: leftUser }) => {
+      newSocket.on('user_left', ({ user: leftUser }) => {
         toast(`${leftUser.displayName} left the session`)
       })
 
-      newSocket.on('file_updated', ({ sessionId, fileName, updatedBy }) => {
+      newSocket.on('file_updated', ({ fileName, updatedBy }) => {
         toast(`${fileName} was updated by ${updatedBy.displayName}`)
       })
 

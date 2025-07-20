@@ -231,7 +231,7 @@ const StudioWindow: React.FC<StudioWindowProps> = ({
 
                 {/* Steps Indicator */}
                 <div className="flex justify-center space-x-8">
-                  {(['allocating', 'starting', 'connecting', 'ready'] as StudioStep[]).map((step, index) => {
+                  {(['allocating', 'starting', 'connecting', 'ready'] as StudioStep[]).map((step) => {
                     const stepInfo = stepConfig[step];
                     const StepIcon = stepInfo.icon;
                     const isActive = studioState.step === step;

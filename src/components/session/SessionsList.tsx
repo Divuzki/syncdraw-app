@@ -68,8 +68,15 @@ const SessionsList: React.FC<SessionsListProps> = ({ onCreateSession }) => {
       // Convert Session to ExtendedSession format for setCurrentSession
       const extendedSession = {
         ...session,
+        createdAt: new Date(session.createdAt),
+        status: session.status === 'archived' ? 'inactive' : session.status as 'active' | 'inactive' | 'launching',
         roles: {}, // Will be loaded by setCurrentSession via IPC
-        settings: {} // Add default settings if required
+        settings: {
+          maxParticipants: 10,
+          allowFileUpload: true,
+          allowChat: true,
+          autoSave: true
+        }
       };
       await setCurrentSession(extendedSession);
     }

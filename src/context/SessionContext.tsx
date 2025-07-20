@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { useAuth } from '@/context/AuthContext'
+import React, { createContext, useContext, useState } from 'react'
+
 import { Session } from '@shared/types'
 
 interface ExtendedSession extends Session {
@@ -27,7 +27,6 @@ export const useSession = () => {
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentSession, setCurrentSession] = useState<ExtendedSession | null>(null)
-  const { user } = useAuth()
 
   // Load session metadata including roles via IPC
   const loadSessionMetadata = async (sessionId: string) => {

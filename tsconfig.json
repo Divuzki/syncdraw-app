@@ -21,6 +21,7 @@
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["src", "shared", "electron"],
+  "include": ["src", "shared"],
+  "exclude": ["electron", "dist", "dist-electron", "node_modules"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

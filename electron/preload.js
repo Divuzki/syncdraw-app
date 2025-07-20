@@ -32,6 +32,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('theme-changed', callback);
     return () => ipcRenderer.removeListener('theme-changed', callback);
   },
+  
+  // Auto-updater functionality
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  
+  // Auto-updater events
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on('update-available', (event, info) => callback(info));
+    return () => ipcRenderer.removeListener('update-available', callback);
+  },
+  onDownloadProgress: (callback) => {
+    ipcRenderer.on('download-progress', (event, progress) => callback(progress));
+    return () => ipcRenderer.removeListener('download-progress', callback);
+  },
+  onUpdateDownloaded: (callback) => {
+    ipcRenderer.on('update-downloaded', (event, info) => callback(info));
+    return () => ipcRenderer.removeListener('update-downloaded', callback);
+  },
 });
 
 // Expose safe authentication API

@@ -3,14 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   ArrowLeft, 
-  Users, 
   Upload, 
-  Download, 
   MessageCircle, 
   Settings,
   Play,
-  Pause,
-  Volume2
+
 } from 'lucide-react'
 import { useSocket } from '@/context/SocketContext'
 import { useAuth } from '@/context/AuthContext'
@@ -25,8 +22,8 @@ const Session: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { socket, joinSession, leaveSession, onlineUsers } = useSocket()
-  const { currentSession, setCurrentSession, isOwner, canEdit } = useSession()
+  const { joinSession, leaveSession, onlineUsers } = useSocket()
+  const { setCurrentSession, isOwner } = useSession()
   
   const [session, setSession] = useState<any>(null)
   const [showUpload, setShowUpload] = useState(false)
@@ -53,12 +50,22 @@ const Session: React.FC = () => {
       // Load session and files data
       // Set session with mock roles for demo (in real app, this would come from API)
       const mockSession = {
-        id: sessionId,
+        id: sessionId || '',
         name: 'Demo Session',
+        createdBy: user?.uid || '',
+        createdAt: new Date(),
+        participants: [user?.uid || ''],
+        status: 'active' as const,
         roles: {
-          [user?.uid || '']: 'owner', // Current user as owner
+          [user?.uid || '']: 'owner' as const, // Current user as owner
           // Add other participants with different roles
-        }
+        },
+        settings: {
+           maxParticipants: 10,
+           allowFileUpload: true,
+           allowChat: true,
+           autoSave: true
+         }
       }
       setSession(mockSession)
       setCurrentSession(mockSession)
@@ -114,7 +121,7 @@ const Session: React.FC = () => {
 
               {/* Actions */}
               <Button
-                variant="default"
+                variant="primary"
                 size="sm"
                 onClick={handleLaunchStudio}
                 disabled={!isOwner(user?.uid || '')}
@@ -173,7 +180,6 @@ const Session: React.FC = () => {
             <FileList 
               files={files} 
               sessionId={sessionId!}
-              onFileUpdate={setFiles}
             />
           </div>
         </div>
