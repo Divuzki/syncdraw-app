@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Send, X, Smile } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
-import { useSocket } from '../../context/SocketContext'
-import Button from '../ui/Button'
+import { useAuth } from '@/context/AuthContext'
+import { useSocket } from '@/context/SocketContext'
+import { useSession } from '@/context/SessionContext'
+import Button from '@/components/ui/Button'
 
 interface ChatPanelProps {
   sessionId: string
@@ -22,14 +23,18 @@ interface Message {
 const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId, onClose }) => {
   const { user } = useAuth()
   const { socket, sendMessage } = useSocket()
+  const { getUserRole } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  const userRole = getUserRole(user?.uid || '')
+  const canSendMessage = userRole !== 'viewer'
 
   useEffect(() => {
     if (socket) {
       socket.on('new_message', (message: Message) => {
-        setMessages(prev => [...prev, message])
+        setMessages((prev: Message[]) => [...prev, message])
       })
 
       return () => {
@@ -44,7 +49,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId, onClose }) => {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() || !canSendMessage) return
 
     const message: Message = {
       id: Date.now().toString(),
@@ -55,7 +60,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId, onClose }) => {
       timestamp: new Date(),
     }
 
-    setMessages(prev => [...prev, message])
+    setMessages((prev: Message[]) => [...prev, message])
     sendMessage(sessionId, newMessage.trim())
     setNewMessage('')
   }
@@ -83,7 +88,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId, onClose }) => {
             </p>
           </div>
         ) : (
-          messages.map((message) => (
+          messages.map((message: Message) => (
             <motion.div
               key={message.id}
               initial={{ opacity: 0, y: 10 }}
@@ -129,18 +134,29 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId, onClose }) => {
             <input
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="w-full px-3 py-2 pr-10 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground text-sm"
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
+              placeholder={canSendMessage ? "Type a message..." : "Viewers cannot send messages"}
+              disabled={!canSendMessage}
+              className={`w-full px-3 py-2 pr-10 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground text-sm ${
+                !canSendMessage ? 'opacity-50 pointer-events-none' : ''
+              }`}
             />
             <button
               type="button"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-accent rounded"
+              disabled={!canSendMessage}
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-accent rounded ${
+                !canSendMessage ? 'opacity-50 pointer-events-none' : ''
+              }`}
             >
               <Smile className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
-          <Button type="submit" size="sm" disabled={!newMessage.trim()}>
+          <Button 
+            type="submit" 
+            size="sm" 
+            disabled={!newMessage.trim() || !canSendMessage}
+            className={!canSendMessage ? 'opacity-50 pointer-events-none' : ''}
+          >
             <Send className="w-4 h-4" />
           </Button>
         </div>

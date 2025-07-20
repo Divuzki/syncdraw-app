@@ -12,10 +12,10 @@ export interface Session {
   name: string
   createdBy: string
   createdAt: Date
-  updatedAt: Date
   participants: string[]
   vmId?: string
-  status: 'active' | 'inactive' | 'archived'
+  status: 'active' | 'inactive' | 'launching'
+  roles: Record<string, 'owner' | 'editor' | 'viewer'>
   settings: SessionSettings
 }
 

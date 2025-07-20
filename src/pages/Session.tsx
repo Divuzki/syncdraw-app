@@ -12,24 +12,26 @@ import {
   Pause,
   Volume2
 } from 'lucide-react'
-import { useSocket } from '../context/SocketContext'
-import { useAuth } from '../context/AuthContext'
-import Button from '../components/ui/Button'
-import FileList from '../components/session/FileList'
-import ChatPanel from '../components/session/ChatPanel'
-import UserPresence from '../components/session/UserPresence'
-import UploadModal from '../components/session/UploadModal'
+import { useSocket } from '@/context/SocketContext'
+import { useAuth } from '@/context/AuthContext'
+import { useSession } from '@/context/SessionContext'
+import Button from '@/components/ui/Button'
+import FileList from '@/components/session/FileList'
+import ChatPanel from '@/components/session/ChatPanel'
+import UserPresence from '@/components/session/UserPresence'
+import UploadModal from '@/components/session/UploadModal'
 
 const Session: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { socket, joinSession, leaveSession, onlineUsers } = useSocket()
+  const { currentSession, setCurrentSession, isOwner, canEdit } = useSession()
   
   const [session, setSession] = useState<any>(null)
   const [showUpload, setShowUpload] = useState(false)
   const [showChat, setShowChat] = useState(false)
-  const [files, setFiles] = useState([])
+  const [files, setFiles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -49,11 +51,26 @@ const Session: React.FC = () => {
   const loadSessionData = async () => {
     try {
       // Load session and files data
+      // Set session with mock roles for demo (in real app, this would come from API)
+      const mockSession = {
+        id: sessionId,
+        name: 'Demo Session',
+        roles: {
+          [user?.uid || '']: 'owner', // Current user as owner
+          // Add other participants with different roles
+        }
+      }
+      setSession(mockSession)
+      setCurrentSession(mockSession)
       setLoading(false)
     } catch (error) {
       console.error('Failed to load session:', error)
       setLoading(false)
     }
+  }
+
+  const handleLaunchStudio = () => {
+    navigate(`/studio/${sessionId}`)
   }
 
   const sessionUsers = sessionId ? onlineUsers[sessionId] || [] : []
@@ -96,6 +113,17 @@ const Session: React.FC = () => {
               <UserPresence users={sessionUsers} />
 
               {/* Actions */}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleLaunchStudio}
+                disabled={!isOwner(user?.uid || '')}
+                className={!isOwner(user?.uid || '') ? 'opacity-50 pointer-events-none' : ''}
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Launch Studio
+              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -171,8 +199,8 @@ const Session: React.FC = () => {
         isOpen={showUpload}
         onClose={() => setShowUpload(false)}
         sessionId={sessionId!}
-        onFilesUploaded={(newFiles) => {
-          setFiles(prev => [...prev, ...newFiles])
+        onFilesUploaded={(newFiles: any[]) => {
+          setFiles((prev: any[]) => [...prev, ...newFiles])
           setShowUpload(false)
         }}
       />

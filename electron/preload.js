@@ -3,6 +3,15 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Studio functionality
+  launchStudio: (sessionId, dawType) => ipcRenderer.invoke('launch-studio', sessionId, dawType),
+  endSession: (sessionId) => ipcRenderer.invoke('end-session', sessionId),
+  getSessionMetadata: (sessionId) => ipcRenderer.invoke('get-session-metadata', sessionId),
+  
+  // Session management
+  getSessions: (userId) => ipcRenderer.invoke('get-sessions', userId),
+  createSession: (sessionData) => ipcRenderer.invoke('create-session', sessionData),
+  
   // File system operations
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   selectFiles: () => ipcRenderer.invoke('select-files'),
@@ -12,15 +21,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => ipcRenderer.invoke('get-platform'),
   
   // Window controls
-  minimize: () => ipcRenderer.invoke('minimize-window'),
-  maximize: () => ipcRenderer.invoke('maximize-window'),
-  close: () => ipcRenderer.invoke('close-window'),
+  minimize: () => ipcRenderer.invoke('window-minimize'),
+  maximize: () => ipcRenderer.invoke('window-maximize'),
+  close: () => ipcRenderer.invoke('window-close'),
+  isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
   
   // Theme detection
   getSystemTheme: () => ipcRenderer.invoke('get-system-theme'),
   onThemeChange: (callback) => {
     ipcRenderer.on('theme-changed', callback);
     return () => ipcRenderer.removeListener('theme-changed', callback);
+  },
+});
+
+// Expose safe authentication API
+contextBridge.exposeInMainWorld('api', {
+  auth: {
+    loginWithPopup: (provider) => ipcRenderer.invoke('auth-login-popup', provider),
+    logout: () => ipcRenderer.invoke('auth-logout'),
+    onAuthStateChanged: (callback) => {
+      ipcRenderer.on('auth-state-changed', (event, user) => callback(user));
+      return () => ipcRenderer.removeListener('auth-state-changed', callback);
+    },
   },
 });
 
