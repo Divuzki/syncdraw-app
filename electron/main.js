@@ -3,6 +3,65 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 
+// Load environment variables
+require('dotenv').config();
+
+// Check if we should use mock data
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
+console.log(`🔧 Electron Main: ${USE_MOCK_DATA ? 'MOCK' : 'REAL'} mode enabled`);
+
+// Mock data for sessions
+const mockSessions = [
+  {
+    id: 'mock-session-1',
+    name: 'Design Review Meeting',
+    description: 'Weekly design review for the new product features',
+    createdAt: new Date('2024-01-15T10:00:00Z').toISOString(),
+    updatedAt: new Date('2024-01-15T14:30:00Z').toISOString(),
+    status: 'active',
+    ownerId: 'user-123',
+    settings: {
+      maxParticipants: 10,
+      allowFileUpload: true,
+      allowChat: true,
+      autoSave: true
+    }
+  },
+  {
+    id: 'mock-session-2',
+    name: 'Sprint Planning',
+    description: 'Planning session for Sprint 23',
+    createdAt: new Date('2024-01-14T09:00:00Z').toISOString(),
+    updatedAt: new Date('2024-01-14T12:00:00Z').toISOString(),
+    status: 'inactive',
+    ownerId: 'user-456',
+    settings: {
+      maxParticipants: 8,
+      allowFileUpload: true,
+      allowChat: true,
+      autoSave: false
+    }
+  },
+  {
+    id: 'mock-session-3',
+    name: 'Client Presentation',
+    description: 'Final presentation to the client',
+    createdAt: new Date('2024-01-13T14:00:00Z').toISOString(),
+    updatedAt: new Date('2024-01-13T16:30:00Z').toISOString(),
+    status: 'launching',
+    ownerId: 'user-123',
+    settings: {
+      maxParticipants: 15,
+      allowFileUpload: false,
+      allowChat: true,
+      autoSave: true
+    }
+  }
+];
+
+// Mock delay function
+const mockDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
+
 let mainWindow;
 
 function createWindow() {
@@ -144,6 +203,22 @@ const vmOrchestration = {
 // IPC handlers for studio functionality
 ipcMain.handle('launch-studio', async (event, sessionId, dawType = 'pro-tools') => {
   console.log('Launching studio for session:', sessionId, 'with DAW:', dawType);
+  
+  if (USE_MOCK_DATA) {
+    // Mock VM launch with delay
+    console.log('🎭 Mock: Simulating VM launch...');
+    await mockDelay(2000); // Simulate VM provisioning delay
+    
+    return {
+      success: true,
+      sessionId,
+      vmId: `mock-vm-${sessionId}-${Date.now()}`,
+      streamingUrl: 'https://example.com/mock-stream',
+      dawType,
+      message: 'Mock studio launched successfully'
+    };
+  }
+  
   try {
     // Step 1: Launch VM with specified DAW
     const vmResult = await vmOrchestration.launchVM(sessionId, dawType);
@@ -183,6 +258,29 @@ ipcMain.handle('end-session', async (event, sessionId) => {
 
 ipcMain.handle('get-session-metadata', async (event, sessionId) => {
   console.log('Getting metadata for session:', sessionId);
+  
+  if (USE_MOCK_DATA) {
+    console.log('🎭 Mock: Getting session metadata...');
+    await mockDelay();
+    
+    const session = mockSessions.find(s => s.id === sessionId);
+    if (session) {
+      return {
+        success: true,
+        metadata: {
+          ...session,
+          participants: [
+            { id: 'user-123', name: 'John Doe', email: 'john@example.com', role: 'owner' },
+            { id: 'user-456', name: 'Jane Smith', email: 'jane@example.com', role: 'editor' },
+            { id: 'user-789', name: 'Bob Wilson', email: 'bob@example.com', role: 'viewer' }
+          ]
+        }
+      };
+    } else {
+      return { success: false, error: 'Session not found' };
+    }
+  }
+  
   try {
     // Add your metadata retrieval logic here
     // This could involve fetching from database, APIs, etc.
@@ -342,6 +440,12 @@ function extractUserFromUrl(url) {
 
 // Session management IPC handlers
 ipcMain.handle('get-sessions', async (event, userId) => {
+  if (USE_MOCK_DATA) {
+    console.log('🎭 Mock: Getting sessions for user:', userId);
+    await mockDelay();
+    return { success: true, sessions: [...mockSessions] };
+  }
+  
   try {
     // Call Azure Functions to get sessions
     const response = await fetch(`${process.env.AZURE_FUNCTIONS_URL}/api/session-get?userId=${userId}`, {
@@ -365,6 +469,30 @@ ipcMain.handle('get-sessions', async (event, userId) => {
 });
 
 ipcMain.handle('create-session', async (event, sessionData) => {
+  if (USE_MOCK_DATA) {
+    console.log('🎭 Mock: Creating session:', sessionData.name);
+    await mockDelay(800); // Slightly longer delay for creation
+    
+    const newSession = {
+      id: `mock-session-${Date.now()}`,
+      name: sessionData.name,
+      description: sessionData.description || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'active',
+      ownerId: sessionData.ownerId || 'user-123',
+      settings: sessionData.settings || {
+        maxParticipants: 10,
+        allowFileUpload: true,
+        allowChat: true,
+        autoSave: true
+      }
+    };
+    
+    mockSessions.push(newSession);
+    return { success: true, session: newSession };
+  }
+  
   try {
     // Call Azure Functions to create session
     const response = await fetch(`${process.env.AZURE_FUNCTIONS_URL}/api/session-create`, {

@@ -4,6 +4,7 @@ import { ArrowLeft, Users, LogOut, Loader2, ChevronDown, ChevronUp, BarChart3, C
 import { useAuth } from '@/context/AuthContext'
 import { useSocket } from '@/context/SocketContext'
 import { useSession } from '@/context/SessionContext'
+import { SessionService } from '@/services'
 
 interface LaunchVMResponse {
   vmId: string
@@ -52,16 +53,9 @@ const StudioPage: React.FC = () => {
 
   const fetchSessionMetrics = async () => {
     try {
-      // Mock IPC call - in real app this would be: window.electronAPI.getSessionMetrics(sessionId)
-      const mockMetrics: SessionMetrics = {
-        collaborators: Math.floor(Math.random() * 8) + 1,
-        editTime: `${Math.floor(Math.random() * 120) + 30}m`,
-        topUser: ['Alice', 'Bob', 'Charlie', 'Diana'][Math.floor(Math.random() * 4)],
-        heatmap: Array(7).fill(0).map(() => 
-          Array(24).fill(0).map(() => Math.floor(Math.random() * 10))
-        )
-      }
-      setMetrics(mockMetrics)
+      if (!sessionId) return
+      const sessionMetrics = await SessionService.getSessionMetrics(sessionId)
+      setMetrics(sessionMetrics)
     } catch (error) {
       console.error('Failed to fetch session metrics:', error)
     }
@@ -72,46 +66,27 @@ const StudioPage: React.FC = () => {
       setIsLaunching(true)
       setError(null)
 
+      if (!sessionId) {
+        throw new Error('Session ID is required')
+      }
+
       // Fetch session details first
-      const sessionResponse = await fetch(`${import.meta.env.VITE_AZURE_FUNCTIONS_URL}/api/session-get/${sessionId}`)
-      if (sessionResponse.ok) {
-        const sessionData = await sessionResponse.json()
-        setSessionName(sessionData.name || 'Untitled Session')
-        
-        // Set session with mock roles for demo (in real app, this would come from API)
-        const extendedSession = {
-          ...sessionData,
-          roles: {
-            [user?.uid || '']: 'owner', // Current user as owner
-            // Add other participants with different roles
-          }
+      const sessionData = await SessionService.getSession(sessionId)
+      setSessionName(sessionData.name || 'Untitled Session')
+      
+      // Set session with roles
+      const extendedSession = {
+        ...sessionData,
+        roles: {
+          [user?.uid || '']: 'owner', // Current user as owner
+          // Add other participants with different roles
         }
-        setCurrentSession(extendedSession)
       }
+      setCurrentSession(extendedSession)
 
-      // Call Azure Function to launch VM
-      const response = await fetch(`${import.meta.env.VITE_AZURE_FUNCTIONS_URL}/api/vm-provision`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await user?.getIdToken()}`
-        },
-        body: JSON.stringify({
-          sessionId,
-          vmSize: 'Standard_B2s',
-          region: 'eastus'
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to launch studio VM')
-      }
-
-      const vmData: LaunchVMResponse = await response.json()
+      // Launch studio using service layer
+      const vmData = await SessionService.launchStudio(sessionId)
       console.log('VM launch initiated:', vmData)
-
-      // Mock delay to simulate VM provisioning
-      await new Promise(resolve => setTimeout(resolve, 3000))
 
       setVmLaunched(true)
       setIsLaunching(false)

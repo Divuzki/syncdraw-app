@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Folder, Upload } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { azureService } from '../../services/azure'
+import { SessionService } from '../../services'
 import Button from '../ui/Button'
 import toast from 'react-hot-toast'
 
@@ -44,7 +44,12 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
 
     setLoading(true)
     try {
-      const session = await azureService.createSession(projectName, user!.uid)
+      const session = await SessionService.createSession({
+        name: projectName,
+        description: '',
+        ownerId: user!.uid,
+        ownerName: user!.displayName || user!.email || 'Unknown User'
+      })
       toast.success('Session created successfully!')
       onSessionCreated(session)
     } catch (error) {

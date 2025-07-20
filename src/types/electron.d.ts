@@ -2,13 +2,18 @@
 
 interface ElectronAPI {
   // Studio functionality
-  launchStudio: (sessionId: string, dawType: string) => Promise<{
+  launchStudio: (
+    sessionId: string,
+    dawType: string
+  ) => Promise<{
     success: boolean;
     streamingUrl?: string;
     vmId?: string;
     error?: string;
   }>;
-  endSession: (sessionId: string) => Promise<{ success: boolean; message?: string }>;
+  endSession: (
+    sessionId: string
+  ) => Promise<{ success: boolean; message?: string }>;
   getSessionMetadata: (sessionId: string) => Promise<{
     success: boolean;
     metadata?: {
@@ -22,8 +27,12 @@ interface ElectronAPI {
   }>;
 
   // Session management
-  getSessions: (userId: string) => Promise<{ success: boolean; sessions?: any[]; error?: string }>;
-  createSession: (sessionData: any) => Promise<{ success: boolean; session?: any; error?: string }>;
+  getSessions: (
+    userId: string
+  ) => Promise<{ success: boolean; sessions?: any[]; error?: string }>;
+  createSession: (
+    sessionData: any
+  ) => Promise<{ success: boolean; session?: any; error?: string }>;
 
   // File system operations
   selectFolder: () => Promise<{ canceled: boolean; filePaths: string[] }>;
@@ -40,22 +49,28 @@ interface ElectronAPI {
   isMaximized: () => Promise<boolean>;
 
   // Theme detection
-  getSystemTheme: () => Promise<'light' | 'dark'>;
-  onThemeChange: (callback: (theme: 'light' | 'dark') => void) => void;
-  
+  getSystemTheme: () => Promise<"light" | "dark">;
+  onThemeChange: (callback: (theme: "light" | "dark") => void) => void;
+
   // Auto-updater functionality
-  checkForUpdates: () => Promise<{ success: boolean; updateInfo?: any; error?: string }>;
+  checkForUpdates: () => Promise<{
+    success: boolean;
+    updateInfo?: any;
+    error?: string;
+  }>;
   downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
   installUpdate: () => Promise<{ success: boolean; error?: string }>;
-  
+
   // Auto-updater events
   onUpdateAvailable: (callback: (info: any) => void) => () => void;
-  onDownloadProgress: (callback: (progress: {
-    bytesPerSecond: number;
-    percent: number;
-    transferred: number;
-    total: number;
-  }) => void) => () => void;
+  onDownloadProgress: (
+    callback: (progress: {
+      bytesPerSecond: number;
+      percent: number;
+      transferred: number;
+      total: number;
+    }) => void
+  ) => () => void;
   onUpdateDownloaded: (callback: (info: any) => void) => () => void;
 }
 
@@ -82,6 +97,8 @@ declare global {
     api: {
       auth: AuthAPI;
     };
+    Buffer: typeof Buffer;
+    global: typeof globalThis;
   }
 }
 

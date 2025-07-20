@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDropzone } from 'react-dropzone'
 import { X, Upload, File, Music, AlertCircle } from 'lucide-react'
-import { azureService } from '../../services/azure'
+import { FileService } from '../../services'
 import Button from '../ui/Button'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -62,7 +62,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
       ))
 
       try {
-        const url = await azureService.uploadFile(
+        const url = await FileService.uploadFile(
           sessionId,
           uploadFile.file,
           (progress) => {
@@ -105,21 +105,11 @@ const UploadModal: React.FC<UploadModalProps> = ({
   }
 
   const getFileIcon = (fileName: string) => {
-    const extension = fileName.split('.').pop()?.toLowerCase()
-    
-    if (['mp3', 'wav', 'aiff', 'flac', 'm4a'].includes(extension || '')) {
-      return <Music className="w-5 h-5 text-blue-500" />
-    }
-    
-    return <File className="w-5 h-5 text-muted-foreground" />
+    return FileService.getFileIcon(fileName)
   }
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    return FileService.formatFileSize(bytes)
   }
 
   const handleClose = () => {
