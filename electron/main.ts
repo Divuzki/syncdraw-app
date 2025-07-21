@@ -68,9 +68,89 @@ function createWindow(): void {
   });
 }
 
-// App event handlers
-app.whenReady().then(() => {
-  createWindow();
+// OAuth authentication handlers
+let authWindow: BrowserWindow | null = null;
+let authCallback: ((result: any) => void) | null = null;
+
+function createAuthWindow(authUrl: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    // Store the callback
+    authCallback = resolve;
+    
+    // Open the auth URL in the default browser
+    shell.openExternal(authUrl);
+    
+    // Set up a timeout to reject if no response
+    const timeout = setTimeout(() => {
+      authCallback = null;
+      reject(new Error('Authentication timeout'));
+    }, 300000); // 5 minutes timeout
+    
+    // Override the callback to clear timeout
+    const originalCallback = authCallback;
+    authCallback = (result) => {
+      clearTimeout(timeout);
+      originalCallback(result);
+    };
+  });
+}
+
+// Handle deep links for OAuth callback
+app.setAsDefaultProtocolClient('syncdraw');
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleAuthCallback(url);
+});
+
+app.on('second-instance', (event, commandLine) => {
+  // Handle protocol on Windows/Linux
+  const url = commandLine.find(arg => arg.startsWith('syncdraw://'));
+  if (url) {
+    handleAuthCallback(url);
+  }
+  
+  // Focus the main window
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+function handleAuthCallback(url: string) {
+  console.log('Received auth callback:', url);
+  
+  if (authCallback) {
+    try {
+      const urlObj = new URL(url);
+      const code = urlObj.searchParams.get('code');
+      const error = urlObj.searchParams.get('error');
+      const state = urlObj.searchParams.get('state');
+      
+      if (error) {
+        authCallback({ success: false, error });
+      } else if (code) {
+        authCallback({ success: true, code, state });
+      } else {
+        authCallback({ success: false, error: 'No authorization code received' });
+      }
+    } catch (err) {
+      authCallback({ success: false, error: 'Invalid callback URL' });
+    }
+    
+    authCallback = null;
+  }
+}
+
+// Ensure single instance
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  // App event handlers
+  app.whenReady().then(() => {
+    createWindow();
   
   // Auto-updater events
   if (!isDev) {
@@ -104,7 +184,8 @@ app.whenReady().then(() => {
       mainWindow?.webContents.send('update-downloaded', info);
     });
   }
-});
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -149,6 +230,88 @@ ipcMain.handle('install-update', async () => {
     return { success: true };
   }
   return { success: false, error: 'Updates not available in development mode' };
+});
+
+// Authentication IPC handlers
+ipcMain.handle('auth-login-external', async (event, provider: string) => {
+  try {
+    // Generate OAuth URLs based on provider
+    let authUrl = '';
+    const redirectUri = 'syncdraw://auth/callback';
+    const state = Math.random().toString(36).substring(2, 15);
+    
+    switch (provider) {
+      case 'google':
+        const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
+        authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+          `client_id=${googleClientId}&` +
+          `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+          `response_type=code&` +
+          `scope=${encodeURIComponent('openid email profile')}&` +
+          `state=${state}`;
+        break;
+        
+      case 'github':
+        const githubClientId = process.env.VITE_GITHUB_CLIENT_ID || '';
+        authUrl = `https://github.com/login/oauth/authorize?` +
+          `client_id=${githubClientId}&` +
+          `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+          `scope=${encodeURIComponent('user:email')}&` +
+          `state=${state}`;
+        break;
+        
+      case 'apple':
+        const appleClientId = process.env.VITE_APPLE_CLIENT_ID || '';
+        authUrl = `https://appleid.apple.com/auth/authorize?` +
+          `client_id=${appleClientId}&` +
+          `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+          `response_type=code&` +
+          `scope=${encodeURIComponent('name email')}&` +
+          `response_mode=query&` +
+          `state=${state}`;
+        break;
+        
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
+    }
+    
+    console.log('Opening auth URL:', authUrl);
+    const result = await createAuthWindow(authUrl);
+    
+    if (result.success && result.code) {
+      // Here you would typically exchange the code for tokens
+      // For now, we'll return the code to be handled by the renderer
+      return {
+        success: true,
+        code: result.code,
+        state: result.state,
+        provider
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || 'Authentication failed'
+      };
+    }
+  } catch (error) {
+    console.error('Auth error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Authentication failed'
+    };
+  }
+});
+
+ipcMain.handle('auth-logout', async () => {
+  try {
+    // Clear any stored auth data
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Logout failed'
+    };
+  }
 });
 
 // VM Orchestration module

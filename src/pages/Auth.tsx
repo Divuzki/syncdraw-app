@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Music, Github, Chrome, Apple } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Button from '../components/ui/Button'
+import AuthDebug from '../components/auth/AuthDebug'
 
 const Auth: React.FC = () => {
   const { user, loading, isAuthenticating, authProvider, signInWithGoogle, signInWithGithub, signInWithApple } = useAuth()
@@ -46,7 +47,10 @@ const Auth: React.FC = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
               <h2 className="text-2xl font-bold text-foreground mb-2">Waiting for login</h2>
               <p className="text-muted-foreground mb-4">
-                Complete your {authProvider} sign-in in the browser window
+                {typeof window !== 'undefined' && window.api?.auth 
+                  ? `Complete your ${authProvider} sign-in in the browser that just opened`
+                  : `Complete your ${authProvider} sign-in in the browser window`
+                }
               </p>
             </div>
             
@@ -170,6 +174,9 @@ const Auth: React.FC = () => {
           By signing in, you agree to our Terms of Service and Privacy Policy
         </div>
       </motion.div>
+      
+      {/* Debug Component - Remove in production */}
+      <AuthDebug />
     </div>
   )
 }

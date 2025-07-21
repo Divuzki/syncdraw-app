@@ -87,6 +87,13 @@ interface AuthAPI {
     };
     error?: string;
   }>;
+  loginWithExternalBrowser: (provider: string) => Promise<{
+    success: boolean;
+    code?: string;
+    state?: string;
+    provider?: string;
+    error?: string;
+  }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
   onAuthStateChanged: (callback: (user: any) => void) => () => void;
 }

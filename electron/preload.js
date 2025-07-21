@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 contextBridge.exposeInMainWorld('api', {
   auth: {
     loginWithPopup: (provider) => ipcRenderer.invoke('auth-login-popup', provider),
+    loginWithExternalBrowser: (provider) => ipcRenderer.invoke('auth-login-external', provider),
     logout: () => ipcRenderer.invoke('auth-logout'),
     onAuthStateChanged: (callback) => {
       ipcRenderer.on('auth-state-changed', (event, user) => callback(user));

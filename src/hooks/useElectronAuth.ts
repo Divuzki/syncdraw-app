@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { User } from '@shared/types';
+import { signInWithOAuthCode } from '../services/electronAuth';
+import { User as FirebaseUser } from 'firebase/auth';
 
 interface AuthState {
   user: User | null;
@@ -29,15 +31,33 @@ export function useElectronAuth() {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      const result = await window.api!.auth.loginWithPopup(provider);
+      // Use external browser authentication (Figma-style)
+      const result = await window.api!.auth.loginWithExternalBrowser(provider);
       
-      if (result.success && result.user) {
-        setAuthState({
-          user: result.user,
-          loading: false,
-          error: null,
-        });
-        return result.user;
+      if (result.success && result.code) {
+        // Exchange the OAuth code for Firebase authentication
+        const authResult = await signInWithOAuthCode(result.code, provider, result.state);
+        
+        if (authResult.success && authResult.user) {
+          // Convert Firebase user to our User type
+          const user: User = {
+            id: authResult.user.uid,
+            displayName: authResult.user.displayName || 'Unknown User',
+            email: authResult.user.email || '',
+            photoURL: authResult.user.photoURL || undefined,
+            createdAt: new Date(),
+            lastActive: new Date(),
+          };
+          
+          setAuthState({
+            user,
+            loading: false,
+            error: null,
+          });
+          return user;
+        } else {
+          throw new Error(authResult.error || 'Firebase authentication failed');
+        }
       } else {
         const error = result.error || 'Login failed';
         setAuthState(prev => ({
