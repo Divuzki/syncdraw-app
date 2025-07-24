@@ -66,7 +66,7 @@ Update the GitHub repository settings in `package.json`:
 "publish": {
   "provider": "github",
   "owner": "your-github-username",
-  "repo": "syncdraw-app"
+  "repo": "syncdaw-app"
 }
 ```
 

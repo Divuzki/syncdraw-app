@@ -186,7 +186,7 @@ az webapp deployment source config-zip \
 ### 1. Clone and Install
 ```bash
 git clone <repository-url>
-cd syncdraw-app
+cd syncdaw-app
 npm install
 ```
 
@@ -228,7 +228,7 @@ npm run test:e2e
 ## 📁 Project Structure
 
 ```
-syncdraw-app/
+syncdaw-app/
 ├── electron/                 # Electron main process
 │   ├── main.ts              # Main process entry (TypeScript)
 │   ├── main.js              # Compiled main process

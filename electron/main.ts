@@ -1,16 +1,16 @@
 // Add this at the very top, before other imports
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+import * as dotenv from "dotenv";
+import * as path from "path";
 
 // Load environment variables from .env file
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
-import { autoUpdater } from 'electron-updater';
-import http from 'http';
-import { URL } from 'url';
+import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import { autoUpdater } from "electron-updater";
+import http from "http";
+import { URL } from "url";
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === "development";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -19,22 +19,22 @@ function createWindow(): void {
     width: 1280,
     height: 800,
     frame: false,
-    titleBarStyle: 'hidden',
+    titleBarStyle: "hidden",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, "preload.js"),
     },
     show: false,
-    icon: path.join(__dirname, '../public/syncdaw-icon.png'),
+    icon: path.join(__dirname, "../public/syncdaw-icon.png"),
   });
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
 
   // Auto-updater setup (only in production)
@@ -43,36 +43,36 @@ function createWindow(): void {
   }
 
   // Show window when ready
-  mainWindow.once('ready-to-show', () => {
+  mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
   });
 
   // Handle window events
-  mainWindow.on('minimize', () => {
-    console.log('Window minimized');
+  mainWindow.on("minimize", () => {
+    console.log("Window minimized");
   });
 
-  mainWindow.on('maximize', () => {
-    console.log('Window maximized');
+  mainWindow.on("maximize", () => {
+    console.log("Window maximized");
   });
 
-  mainWindow.on('unmaximize', () => {
-    console.log('Window unmaximized');
+  mainWindow.on("unmaximize", () => {
+    console.log("Window unmaximized");
   });
 
-  mainWindow.on('close', (event) => {
-    console.log('Window close requested');
+  mainWindow.on("close", (event) => {
+    console.log("Window close requested");
     // You can add confirmation dialog here if needed
   });
 
-  mainWindow.on('closed', () => {
+  mainWindow.on("closed", () => {
     mainWindow = null;
   });
 
   // Handle external links
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
-    return { action: 'deny' };
+    return { action: "deny" };
   });
 }
 
@@ -85,17 +85,17 @@ function createAuthWindowWithServer(authUrl: string): Promise<any> {
   return new Promise((resolve, reject) => {
     // Store the callback
     authCallback = resolve;
-    
+
     // Open the auth URL in the default browser
     shell.openExternal(authUrl);
-    
+
     // Set up a timeout to reject if no response
     const timeout = setTimeout(() => {
       authCallback = null;
       stopCallbackServer();
-      reject(new Error('Authentication timeout'));
+      reject(new Error("Authentication timeout"));
     }, 300000); // 5 minutes timeout
-    
+
     // Override the callback to clear timeout
     const originalCallback = authCallback;
     authCallback = (result) => {
@@ -109,42 +109,43 @@ function createAuthWindowWithServer(authUrl: string): Promise<any> {
 function startCallbackServer(): Promise<number> {
   return new Promise((resolve, reject) => {
     callbackServer = http.createServer((req, res) => {
-      if (req.url && req.url.startsWith('/auth/callback')) {
+      if (req.url && req.url.startsWith("/auth/callback")) {
         handleAuthCallback(req.url, res);
       } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Not Found');
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not Found");
       }
     });
-    
+
     // Try to bind to port 8080, fallback to random port
-    callbackServer.listen(8080, 'localhost', () => {
+    callbackServer.listen(8080, "localhost", () => {
       const address = callbackServer?.address();
-      const port = typeof address === 'object' && address ? address.port : 8080;
+      const port = typeof address === "object" && address ? address.port : 8080;
       console.log(`OAuth callback server started on port ${port}`);
       resolve(port);
     });
-    
-    callbackServer.on('error', (err: any) => {
-      if (err.code === 'EADDRINUSE') {
+
+    callbackServer.on("error", (err: any) => {
+      if (err.code === "EADDRINUSE") {
         // Port 8080 is in use, try random port
         callbackServer = http.createServer((req, res) => {
-          if (req.url && req.url.startsWith('/auth/callback')) {
+          if (req.url && req.url.startsWith("/auth/callback")) {
             handleAuthCallback(req.url, res);
           } else {
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('Not Found');
+            res.writeHead(404, { "Content-Type": "text/plain" });
+            res.end("Not Found");
           }
         });
-        
-        callbackServer.listen(0, 'localhost', () => {
+
+        callbackServer.listen(0, "localhost", () => {
           const address = callbackServer?.address();
-          const port = typeof address === 'object' && address ? address.port : 0;
+          const port =
+            typeof address === "object" && address ? address.port : 0;
           console.log(`OAuth callback server started on port ${port}`);
           resolve(port);
         });
-        
-        callbackServer.on('error', reject);
+
+        callbackServer.on("error", reject);
       } else {
         reject(err);
       }
@@ -156,32 +157,32 @@ function stopCallbackServer() {
   if (callbackServer) {
     callbackServer.close();
     callbackServer = null;
-    console.log('OAuth callback server stopped');
+    console.log("OAuth callback server stopped");
   }
 }
 
 function handleAuthCallback(url: string, res?: http.ServerResponse) {
-  console.log('Received auth callback:', url);
-  
+  console.log("Received auth callback:", url);
+
   if (authCallback) {
     try {
       const urlObj = new URL(`http://localhost${url}`);
-      const code = urlObj.searchParams.get('code');
-      const error = urlObj.searchParams.get('error');
-      const errorDescription = urlObj.searchParams.get('error_description');
-      const state = urlObj.searchParams.get('state');
-      
+      const code = urlObj.searchParams.get("code");
+      const error = urlObj.searchParams.get("error");
+      const errorDescription = urlObj.searchParams.get("error_description");
+      const state = urlObj.searchParams.get("state");
+
       // Send response to browser
       if (res) {
         if (error) {
-          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.writeHead(400, { "Content-Type": "text/html" });
           res.end(`
             <!DOCTYPE html>
             <html lang="en">
               <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Authentication Error - SyncDraw</title>
+                <title>Authentication Error - SyncDaw</title>
                 <style>
                   * {
                     margin: 0;
@@ -257,7 +258,11 @@ function handleAuthCallback(url: string, res?: http.ServerResponse) {
                   <div class="icon pulse">❌</div>
                   <h1>Authentication Error</h1>
                   <p>Error: ${error}</p>
-                  ${errorDescription ? `<p>Description: ${errorDescription}</p>` : ''}
+                  ${
+                    errorDescription
+                      ? `<p>Description: ${errorDescription}</p>`
+                      : ""
+                  }
                   <p class="countdown">This window will close automatically in <span id="countdown">3</span> seconds</p>
                 </div>
                 
@@ -279,14 +284,14 @@ function handleAuthCallback(url: string, res?: http.ServerResponse) {
             </html>
           `);
         } else if (code) {
-          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.writeHead(200, { "Content-Type": "text/html" });
           res.end(`
             <!DOCTYPE html>
             <html lang="en">
               <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Authentication Successful - SyncDraw</title>
+                <title>Authentication Successful - SyncDaw</title>
                 <style>
                   * {
                     margin: 0;
@@ -375,7 +380,7 @@ function handleAuthCallback(url: string, res?: http.ServerResponse) {
                 <div class="container">
                   <div class="icon">✓</div>
                   <h1>Authentication Successful!</h1>
-                  <p>Welcome to SyncDraw! You can close this window and return to the application.</p>
+                  <p>Welcome to SyncDaw! You can close this window and return to the application.</p>
                   
                   </div>
                 
@@ -384,14 +389,14 @@ function handleAuthCallback(url: string, res?: http.ServerResponse) {
             </html>
           `);
         } else {
-          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.writeHead(400, { "Content-Type": "text/html" });
           res.end(`
             <!DOCTYPE html>
             <html lang="en">
               <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Authentication Error - SyncDraw</title>
+                <title>Authentication Error - SyncDaw</title>
                 <style>
                   * {
                     margin: 0;
@@ -489,25 +494,32 @@ function handleAuthCallback(url: string, res?: http.ServerResponse) {
           `);
         }
       }
-      
+
       // Handle the callback
       if (error) {
-        authCallback({ success: false, error: error, description: errorDescription });
+        authCallback({
+          success: false,
+          error: error,
+          description: errorDescription,
+        });
       } else if (code) {
         authCallback({ success: true, code, state });
       } else {
-        authCallback({ success: false, error: 'No authorization code received' });
+        authCallback({
+          success: false,
+          error: "No authorization code received",
+        });
       }
     } catch (err) {
       if (res) {
-        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.writeHead(400, { "Content-Type": "text/html" });
         res.end(`
           <!DOCTYPE html>
           <html lang="en">
             <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Authentication Error - SyncDraw</title>
+              <title>Authentication Error - SyncDaw</title>
               <style>
                 * {
                   margin: 0;
@@ -604,19 +616,19 @@ function handleAuthCallback(url: string, res?: http.ServerResponse) {
           </html>
         `);
       }
-      authCallback({ success: false, error: 'Invalid callback URL' });
+      authCallback({ success: false, error: "Invalid callback URL" });
     }
-    
+
     authCallback = null;
   } else if (res) {
-    res.writeHead(400, { 'Content-Type': 'text/html' });
+    res.writeHead(400, { "Content-Type": "text/html" });
     res.end(`
       <!DOCTYPE html>
       <html lang="en">
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Authentication Error - SyncDraw</title>
+          <title>Authentication Error - SyncDaw</title>
           <style>
             * {
               margin: 0;
@@ -724,56 +736,63 @@ if (!gotTheLock) {
   // App event handlers
   app.whenReady().then(() => {
     createWindow();
-  
-  // Auto-updater events
-  if (!isDev) {
-    autoUpdater.on('checking-for-update', () => {
-      console.log('Checking for update...');
-    });
-    
-    autoUpdater.on('update-available', (info) => {
-      console.log('Update available.');
-      mainWindow?.webContents.send('update-available', info);
-    });
-    
-    autoUpdater.on('update-not-available', (info) => {
-      console.log('Update not available.');
-    });
-    
-    autoUpdater.on('error', (err) => {
-      console.log('Error in auto-updater. ' + err);
-    });
-    
-    autoUpdater.on('download-progress', (progressObj) => {
-      let log_message = "Download speed: " + progressObj.bytesPerSecond;
-      log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
-      log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
-      console.log(log_message);
-      mainWindow?.webContents.send('download-progress', progressObj);
-    });
-    
-    autoUpdater.on('update-downloaded', (info) => {
-      console.log('Update downloaded');
-      mainWindow?.webContents.send('update-downloaded', info);
-    });
-  }
+
+    // Auto-updater events
+    if (!isDev) {
+      autoUpdater.on("checking-for-update", () => {
+        console.log("Checking for update...");
+      });
+
+      autoUpdater.on("update-available", (info) => {
+        console.log("Update available.");
+        mainWindow?.webContents.send("update-available", info);
+      });
+
+      autoUpdater.on("update-not-available", (info) => {
+        console.log("Update not available.");
+      });
+
+      autoUpdater.on("error", (err) => {
+        console.log("Error in auto-updater. " + err);
+      });
+
+      autoUpdater.on("download-progress", (progressObj) => {
+        let log_message = "Download speed: " + progressObj.bytesPerSecond;
+        log_message =
+          log_message + " - Downloaded " + progressObj.percent + "%";
+        log_message =
+          log_message +
+          " (" +
+          progressObj.transferred +
+          "/" +
+          progressObj.total +
+          ")";
+        console.log(log_message);
+        mainWindow?.webContents.send("download-progress", progressObj);
+      });
+
+      autoUpdater.on("update-downloaded", (info) => {
+        console.log("Update downloaded");
+        mainWindow?.webContents.send("update-downloaded", info);
+      });
+    }
   });
 }
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-app.on('activate', () => {
+app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
 
 // Auto-updater IPC handlers
-ipcMain.handle('check-for-updates', async () => {
+ipcMain.handle("check-for-updates", async () => {
   if (!isDev) {
     try {
       const result = await autoUpdater.checkForUpdates();
@@ -782,10 +801,10 @@ ipcMain.handle('check-for-updates', async () => {
       return { success: false, error: (error as Error).message };
     }
   }
-  return { success: false, error: 'Updates not available in development mode' };
+  return { success: false, error: "Updates not available in development mode" };
 });
 
-ipcMain.handle('download-update', async () => {
+ipcMain.handle("download-update", async () => {
   if (!isDev) {
     try {
       await autoUpdater.downloadUpdate();
@@ -794,46 +813,47 @@ ipcMain.handle('download-update', async () => {
       return { success: false, error: (error as Error).message };
     }
   }
-  return { success: false, error: 'Updates not available in development mode' };
+  return { success: false, error: "Updates not available in development mode" };
 });
 
-ipcMain.handle('install-update', async () => {
+ipcMain.handle("install-update", async () => {
   if (!isDev) {
     autoUpdater.quitAndInstall();
     return { success: true };
   }
-  return { success: false, error: 'Updates not available in development mode' };
+  return { success: false, error: "Updates not available in development mode" };
 });
 
 // Authentication IPC handlers
-ipcMain.handle('auth-login-external', async (event, provider: string) => {
+ipcMain.handle("auth-login-external", async (event, provider: string) => {
   try {
     // Start callback server first to get the actual port
     const port = await startCallbackServer();
-    
+
     // Generate OAuth URLs based on provider
-    let authUrl = '';
+    let authUrl = "";
     const redirectUri = `http://localhost:${port}/auth/callback`;
     const state = Math.random().toString(36).substring(2, 15);
-    
+
     switch (provider) {
-      case 'google':
-        const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
-        authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      case "google":
+        const googleClientId = process.env.GOOGLE_CLIENT_ID || "";
+        authUrl =
+          `https://accounts.google.com/o/oauth2/v2/auth?` +
           `client_id=${googleClientId}&` +
           `redirect_uri=${encodeURIComponent(redirectUri)}&` +
           `response_type=code&` +
-          `scope=${encodeURIComponent('openid email profile')}&` +
+          `scope=${encodeURIComponent("openid email profile")}&` +
           `state=${state}`;
         break;
-        
+
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
-    
-    console.log('Opening auth URL:', authUrl);
+
+    console.log("Opening auth URL:", authUrl);
     const result = await createAuthWindowWithServer(authUrl);
-    
+
     if (result.success && result.code) {
       // Here you would typically exchange the code for tokens
       // For now, we'll return the code to be handled by the renderer
@@ -841,31 +861,31 @@ ipcMain.handle('auth-login-external', async (event, provider: string) => {
         success: true,
         code: result.code,
         state: result.state,
-        provider
+        provider,
       };
     } else {
       return {
         success: false,
-        error: result.error || 'Authentication failed'
+        error: result.error || "Authentication failed",
       };
     }
   } catch (error) {
-    console.error('Auth error:', error);
+    console.error("Auth error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Authentication failed'
+      error: error instanceof Error ? error.message : "Authentication failed",
     };
   }
 });
 
-ipcMain.handle('auth-logout', async () => {
+ipcMain.handle("auth-logout", async () => {
   try {
     // Clear any stored auth data
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Logout failed'
+      error: error instanceof Error ? error.message : "Logout failed",
     };
   }
 });
@@ -875,102 +895,116 @@ const vmOrchestration = {
   async launchVM(sessionId: string, dawType: string) {
     try {
       // Call Azure Functions to provision VM
-      const response = await fetch(`${process.env.AZURE_FUNCTIONS_URL}/api/vm-provision`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-functions-key': process.env.AZURE_FUNCTIONS_KEY || '',
-        },
-        body: JSON.stringify({
-          sessionId,
-          dawType,
-          userId: sessionId, // Assuming sessionId contains user info
-        }),
-      });
-      
+      const response = await fetch(
+        `${process.env.AZURE_FUNCTIONS_URL}/api/vm-provision`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-functions-key": process.env.AZURE_FUNCTIONS_KEY || "",
+          },
+          body: JSON.stringify({
+            sessionId,
+            dawType,
+            userId: sessionId, // Assuming sessionId contains user info
+          }),
+        }
+      );
+
       if (!response.ok) {
         throw new Error(`VM provisioning failed: ${response.status}`);
       }
-      
+
       const result = await response.json();
       return {
         success: true,
         vmId: result.vmId,
         streamingUrl: result.streamingUrl,
-        status: result.status
+        status: result.status,
       };
     } catch (error) {
-      console.error('VM launch error:', error);
+      console.error("VM launch error:", error);
       throw error;
     }
   },
-  
+
   async getStreamingUrl(vmId: string) {
     try {
       // Generate signed streaming URL
-      const response = await fetch(`${process.env.AZURE_FUNCTIONS_URL}/api/vm-stream?vmId=${vmId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-functions-key': process.env.AZURE_FUNCTIONS_KEY || '',
-        },
-      });
-      
+      const response = await fetch(
+        `${process.env.AZURE_FUNCTIONS_URL}/api/vm-stream?vmId=${vmId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-functions-key": process.env.AZURE_FUNCTIONS_KEY || "",
+          },
+        }
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to get streaming URL: ${response.status}`);
       }
-      
+
       const result = await response.json();
       return result.signedUrl;
     } catch (error) {
-      console.error('Streaming URL error:', error);
+      console.error("Streaming URL error:", error);
       throw error;
     }
-  }
+  },
 };
 
 // IPC handlers for studio functionality
-ipcMain.handle('launch-studio', async (event, sessionId: string, dawType: string = 'pro-tools') => {
-  console.log('Launching studio for session:', sessionId, 'with DAW:', dawType);
-  try {
-    // Step 1: Launch VM with specified DAW
-    const vmResult = await vmOrchestration.launchVM(sessionId, dawType);
-    
-    if (!vmResult.success) {
-      throw new Error('Failed to launch VM');
-    }
-    
-    // Step 2: Get signed streaming URL
-    const streamingUrl = await vmOrchestration.getStreamingUrl(vmResult.vmId);
-    
-    return {
-      success: true,
+ipcMain.handle(
+  "launch-studio",
+  async (event, sessionId: string, dawType: string = "pro-tools") => {
+    console.log(
+      "Launching studio for session:",
       sessionId,
-      vmId: vmResult.vmId,
-      streamingUrl,
-      dawType,
-      message: 'Studio launched successfully'
-    };
-  } catch (error) {
-    console.error('Failed to launch studio:', error);
-    return { success: false, error: (error as Error).message };
-  }
-});
+      "with DAW:",
+      dawType
+    );
+    try {
+      // Step 1: Launch VM with specified DAW
+      const vmResult = await vmOrchestration.launchVM(sessionId, dawType);
 
-ipcMain.handle('end-session', async (event, sessionId: string) => {
-  console.log('Ending session:', sessionId);
+      if (!vmResult.success) {
+        throw new Error("Failed to launch VM");
+      }
+
+      // Step 2: Get signed streaming URL
+      const streamingUrl = await vmOrchestration.getStreamingUrl(vmResult.vmId);
+
+      return {
+        success: true,
+        sessionId,
+        vmId: vmResult.vmId,
+        streamingUrl,
+        dawType,
+        message: "Studio launched successfully",
+      };
+    } catch (error) {
+      console.error("Failed to launch studio:", error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+);
+
+ipcMain.handle("end-session", async (event, sessionId: string) => {
+  console.log("Ending session:", sessionId);
   try {
     // Add your session cleanup logic here
     // This could involve stopping VMs, saving state, etc.
-    return { success: true, sessionId, message: 'Session ended successfully' };
+    return { success: true, sessionId, message: "Session ended successfully" };
   } catch (error) {
-    console.error('Failed to end session:', error);
+    console.error("Failed to end session:", error);
     return { success: false, error: (error as Error).message };
   }
 });
 
-ipcMain.handle('get-session-metadata', async (event, sessionId: string) => {
-  console.log('Getting metadata for session:', sessionId);
+ipcMain.handle("get-session-metadata", async (event, sessionId: string) => {
+  console.log("Getting metadata for session:", sessionId);
   try {
     // Add your metadata retrieval logic here
     // This could involve fetching from database, APIs, etc.
@@ -979,30 +1013,30 @@ ipcMain.handle('get-session-metadata', async (event, sessionId: string) => {
       name: `Session ${sessionId}`,
       participants: [],
       createdAt: new Date().toISOString(),
-      status: 'active'
+      status: "active",
     };
     return { success: true, metadata };
   } catch (error) {
-    console.error('Failed to get session metadata:', error);
+    console.error("Failed to get session metadata:", error);
     return { success: false, error: (error as Error).message };
   }
 });
 
 // Legacy IPC handlers
-ipcMain.handle('select-folder', async () => {
+ipcMain.handle("select-folder", async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
-    properties: ['openDirectory'],
+    properties: ["openDirectory"],
   });
   return result;
 });
 
-ipcMain.handle('select-file', async () => {
+ipcMain.handle("select-file", async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
-    properties: ['openFile'],
+    properties: ["openFile"],
     filters: [
-      { name: 'Audio Files', extensions: ['wav', 'mp3', 'aiff', 'flac'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
+      { name: "Audio Files", extensions: ["wav", "mp3", "aiff", "flac"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
   });
   return result;
 });

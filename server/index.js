@@ -15,7 +15,7 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 if (!admin.apps.length) {
   const serviceAccount = {
     type: "service_account",
-    project_id: process.env.FIREBASE_PROJECT_ID || "syncdraw-app",
+    project_id: process.env.FIREBASE_PROJECT_ID || "syncdaw-app",
     private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
     private_key: process.env.FIREBASE_PRIVATE_KEY
       ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
@@ -160,7 +160,9 @@ io.on("connection", (socket) => {
     };
 
     io.to(sessionId).emit("new_message", messageData);
-    console.log(`Message in session ${sessionId} from ${socket.displayName}: ${message}`);
+    console.log(
+      `Message in session ${sessionId} from ${socket.displayName}: ${message}`
+    );
   });
 
   socket.on("file_updated", ({ sessionId, fileName, fileUrl }) => {
@@ -175,7 +177,9 @@ io.on("connection", (socket) => {
       },
     });
 
-    console.log(`File ${fileName} updated in session ${sessionId} by ${socket.displayName}`);
+    console.log(
+      `File ${fileName} updated in session ${sessionId} by ${socket.displayName}`
+    );
   });
 
   socket.on("disconnect", () => {
@@ -220,11 +224,18 @@ app.get("/auth/callback", (req, res) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.send(getErrorPageHTML("Authentication Error", `Error: ${error}`));
+    return res.send(
+      getErrorPageHTML("Authentication Error", `Error: ${error}`)
+    );
   }
 
   if (!state || !pendingOAuthRequests.has(state)) {
-    return res.send(getErrorPageHTML("Authentication Error", "Invalid or expired authentication request"));
+    return res.send(
+      getErrorPageHTML(
+        "Authentication Error",
+        "Invalid or expired authentication request"
+      )
+    );
   }
 
   const request = pendingOAuthRequests.get(state);
@@ -260,15 +271,17 @@ app.post("/auth/start", (req, res) => {
     }
   }
 
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${querystring.stringify({
-    client_id: process.env.GOOGLE_CLIENT_ID || "your-google-client-id",
-    redirect_uri: redirectUri,
-    response_type: "code",
-    scope: "openid email profile",
-    state: state,
-    access_type: "offline",
-    prompt: "consent",
-  })}`;
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${querystring.stringify(
+    {
+      client_id: process.env.GOOGLE_CLIENT_ID || "your-google-client-id",
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid email profile",
+      state: state,
+      access_type: "offline",
+      prompt: "consent",
+    }
+  )}`;
 
   res.json({ authUrl, state });
 });
@@ -327,9 +340,12 @@ app.post("/auth/exchange", async (req, res) => {
 
       const tokenData = await tokenResponse.json();
 
-      const userResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
+      const userResponse = await fetch(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        }
+      );
 
       if (!userResponse.ok) {
         throw new Error(`User info fetch failed: ${userResponse.statusText}`);
@@ -358,7 +374,10 @@ app.post("/auth/exchange", async (req, res) => {
         });
         console.log("Created Firebase custom token using Admin SDK");
       } catch (adminError) {
-        console.warn("Firebase Admin token creation failed:", adminError.message);
+        console.warn(
+          "Firebase Admin token creation failed:",
+          adminError.message
+        );
         customToken = createFallbackToken(userData);
       }
     } else {
@@ -392,9 +411,9 @@ function createFallbackToken(userData) {
   console.log("Using fallback JWT token creation");
   return jwt.sign(
     {
-      iss: "syncdraw-local-auth",
+      iss: "syncdaw-local-auth",
       sub: userData.uid,
-      aud: "syncdraw-app",
+      aud: "syncdaw-app",
       exp: Math.floor(Date.now() / 1000) + 60 * 60,
       iat: Math.floor(Date.now() / 1000),
       uid: userData.uid,
@@ -416,7 +435,7 @@ function getSuccessPageHTML() {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Authentication Successful - SyncDraw</title>
+        <title>Authentication Successful - SyncDaw</title>
         <style>
           * {
             margin: 0;
@@ -504,7 +523,7 @@ function getSuccessPageHTML() {
         <div class="container">
           <div class="icon">✓</div>
           <h1>Authentication Successful!</h1>
-          <p>Welcome to SyncDraw! You can now close this window and return to the application.</p>
+          <p>Welcome to SyncDaw! You can now close this window and return to the application.</p>
           
           </div>
       </body>
@@ -519,7 +538,7 @@ function getErrorPageHTML(title, message) {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${title} - SyncDraw</title>
+        <title>${title} - SyncDaw</title>
         <style>
           * {
             margin: 0;
@@ -619,7 +638,7 @@ function getErrorPageHTML(title, message) {
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`SyncDraw server running on port ${PORT}`);
+  console.log(`SyncDaw server running on port ${PORT}`);
   console.log(`WebSocket server: ws://localhost:${PORT}`);
   console.log(`OAuth callback: http://localhost:${PORT}/auth/callback`);
 });

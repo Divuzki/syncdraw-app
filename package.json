@@ -100,7 +100,7 @@
     "publish": {
       "provider": "github",
       "owner": "divuzki",
-      "repo": "syncdraw-app"
+      "repo": "syncdaw-app"
     },
     "mac": {
       "category": "public.app-category.music",

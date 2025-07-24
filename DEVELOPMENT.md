@@ -130,7 +130,7 @@ Production Setup
 1. **Clone and Install**
    ```bash
    git clone <repository-url>
-   cd syncdraw-app
+   cd syncdaw-app
    npm install
    ```
 
