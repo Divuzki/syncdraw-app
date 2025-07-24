@@ -24,7 +24,7 @@ class LocalAuthService {
   /**
    * Start OAuth flow with localhost redirect (VS Code extension style)
    */
-  async startOAuthFlow(provider: 'google' | 'github' | 'apple'): Promise<User> {
+  async startOAuthFlow(provider: 'google'): Promise<User> {
     try {
       // Step 1: Start OAuth flow on server
       const startResponse = await fetch(`${this.serverUrl}/auth/start`, {

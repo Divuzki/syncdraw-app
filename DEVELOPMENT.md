@@ -20,7 +20,7 @@ Syncdaw is a real-time DAW collaboration platform that allows music producers to
 
 #### Authentication System
 - **Firebase Auth**: Complete authentication infrastructure
-- **Multiple Providers**: Google, GitHub, Apple, and Passkey support
+- **Multiple Providers**: Google and Passkey support
 - **OAuth Flow**: Local OAuth implementation for desktop app
 - **JWT Tokens**: Secure token-based authentication
 - **Auth Context**: React context for authentication state management
