@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow users to create and access their own passkey mappings
+    // Note: safeUid here is the encoded safe UID, not the actual Firebase UID
+    match /passkeyMappings/{safeUid} {
+      // Allow creation during registration with proper validation
+      // Support both unauthenticated (legacy) and authenticated (new flow) creation
+      allow create: if (request.auth == null || (request.auth != null && request.auth.uid == request.resource.data.originalUid))
+        && request.resource.data.keys().hasAll(['email', 'firebasePassword', 'originalUid', 'encryptedPasskeyData', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['email', 'firebasePassword', 'originalUid', 'encryptedPasskeyData', 'createdAt'])
+        && request.resource.data.email is string
+        && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.firebasePassword is string
+        && request.resource.data.firebasePassword.size() >= 32
+        && request.resource.data.originalUid is string
+        && request.resource.data.originalUid.size() == 28
+        && request.resource.data.encryptedPasskeyData is string
+        && request.resource.data.encryptedPasskeyData.size() > 0
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.createdAt == request.time;
+      
+      // Allow reading passkey mappings for authentication purposes
+      // This is needed because passkey authentication requires reading the mapping
+      // before Firebase authentication can occur
+      // Security is maintained through:
+      // 1. The safeUid document ID is derived from the Firebase UID
+      // 2. The passkey credential verification ensures only the rightful owner can authenticate
+      // 3. The Firebase password is encrypted and only accessible with the correct passkey
+      allow read: if true;
+      
+      // Additional security: Allow authenticated users to verify their own mappings
+      // This provides an extra layer of validation after authentication
+      allow read: if request.auth != null 
+        && request.auth.uid == resource.data.originalUid;
+      
+      // Prevent updates to passkey mappings for security
+      // Users should create new passkeys instead of modifying existing ones
+      allow update, delete: if false;
+    }
+    
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

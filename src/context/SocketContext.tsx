@@ -76,7 +76,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       } else {
         // Real socket connection
-        const socketUrl = import.meta.env.VITE_SOCKET_SERVER_URL || 'http://localhost:3001'
+        const socketUrl = import.meta.env.VITE_SOCKET_SERVER_URL
         const newSocket = io(socketUrl, {
           auth: {
             userId: user.uid,

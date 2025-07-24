@@ -5,13 +5,12 @@ import {
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
-  GithubAuthProvider,
-  OAuthProvider,
   signInWithRedirect
 } from 'firebase/auth'
 import { auth } from '../services/firebase'
 import toast from 'react-hot-toast'
 import { useElectronAuth } from '../hooks/useElectronAuth'
+import { passkeyAuth } from '../services/passkeyAuth'
 
 interface AuthContextType {
   user: User | null
@@ -19,8 +18,8 @@ interface AuthContextType {
   isAuthenticating: boolean
   authProvider: string | null
   signInWithGoogle: () => Promise<void>
-  signInWithGithub: () => Promise<void>
-  signInWithApple: () => Promise<void>
+  signInWithPasskey: () => Promise<void>
+  registerWithPasskey: (email: string, displayName: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
 }
 
@@ -47,6 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     console.log('Setting up auth state listener...')
+    console.log('Firebase auth domain:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN)
+    console.log('Current origin:', window.location.origin)
+    console.log('Is Electron:', isElectron)
     
     if (isElectron) {
       // Use Electron auth state - convert to Firebase User format
@@ -80,6 +82,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Use Firebase auth state
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         console.log('Auth state changed:', user)
+        console.log('User exists:', !!user)
+        if (user) {
+          console.log('User email:', user.email)
+          console.log('User display name:', user.displayName)
+          console.log('User UID:', user.uid)
+          console.log('User email verified:', user.emailVerified)
+        }
+        console.log('Setting user state and clearing loading/auth flags')
         setUser(user)
         setLoading(false)
         setIsAuthenticating(false)
@@ -90,16 +100,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       getRedirectResult(auth)
         .then((result) => {
           console.log('Redirect result:', result)
+          console.log('Current URL:', window.location.href)
+          console.log('Current pathname:', window.location.pathname)
           if (result) {
             console.log('User signed in via redirect:', result.user)
+            console.log('User email:', result.user.email)
+            console.log('User display name:', result.user.displayName)
+            console.log('User UID:', result.user.uid)
             toast.success(`Welcome, ${result.user.displayName || result.user.email}!`)
+          } else {
+            console.log('No redirect result found')
           }
         })
         .catch((error) => {
           console.error('Redirect result error:', error)
           console.error('Error code:', error.code)
           console.error('Error message:', error.message)
-          toast.error('Authentication failed')
+          console.error('Error details:', error)
+          
+          // Handle specific Firebase auth errors
+          if (error.code === 'auth/unauthorized-domain') {
+            toast.error('Domain not authorized. Please add localhost:5173 to Firebase authorized domains.')
+            console.error('SOLUTION: Go to Firebase Console > Authentication > Settings > Authorized domains and add localhost:5173')
+          } else if (error.code === 'auth/operation-not-allowed') {
+            toast.error('Google sign-in is not enabled. Please enable it in Firebase Console.')
+          } else if (error.code === 'auth/invalid-api-key') {
+            toast.error('Invalid Firebase API key. Please check your environment variables.')
+          } else {
+            toast.error(`Authentication failed: ${error.message}`)
+          }
+          
           setIsAuthenticating(false)
           setAuthProvider(null)
         })
@@ -137,60 +167,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Google OAuth error:', error)
       console.error('Error code:', error.code)
       console.error('Error message:', error.message)
-      toast.error(`Failed to sign in with Google: ${error.message}`)
+      
+      // Handle specific Firebase auth errors during sign-in initiation
+      if (error.code === 'auth/unauthorized-domain') {
+        toast.error('Domain not authorized. Please add localhost:5173 to Firebase authorized domains.')
+        console.error('SOLUTION: Go to Firebase Console > Authentication > Settings > Authorized domains and add localhost:5173')
+      } else if (error.code === 'auth/operation-not-allowed') {
+        toast.error('Google sign-in is not enabled. Please enable it in Firebase Console.')
+      } else if (error.code === 'auth/invalid-api-key') {
+        toast.error('Invalid Firebase API key. Please check your environment variables.')
+      } else {
+        toast.error(`Failed to sign in with Google: ${error.message}`)
+      }
+      
       setIsAuthenticating(false)
       setAuthProvider(null)
     }
   }
 
-  const signInWithGithub = async () => {
+  const signInWithPasskey = async () => {
     setIsAuthenticating(true)
-    setAuthProvider('GitHub')
+    setAuthProvider('Passkey')
     
     try {
-      if (isElectron) {
-        // Use Electron external browser authentication
-        toast.loading('Opening browser for GitHub sign-in...', { duration: 2000 })
-        await electronAuth.loginWithPopup('github')
+      const result = await passkeyAuth.authenticateWithPasskey()
+      if (result.success && result.user) {
+        setAuthProvider('passkey')
       } else {
-        // Use Firebase redirect for web
-        const provider = new GithubAuthProvider()
-        provider.addScope('user:email')
-        
-        toast.loading('Redirecting to GitHub...', { duration: 2000 })
-        await signInWithRedirect(auth, provider)
+        console.error('Passkey authentication failed:', result.error)
+        throw new Error(result.error || 'Passkey authentication failed')
       }
-      
     } catch (error: any) {
-      console.error('GitHub OAuth error:', error)
-      toast.error('Failed to sign in with GitHub')
+      console.error('Passkey authentication error:', error)
       setIsAuthenticating(false)
       setAuthProvider(null)
+      // Re-throw the error so the Auth component can handle it
+      throw error
     }
   }
 
-  const signInWithApple = async () => {
+  const registerWithPasskey = async (email: string, displayName: string) => {
     setIsAuthenticating(true)
-    setAuthProvider('Apple')
+    setAuthProvider('Passkey')
     
     try {
-      if (isElectron) {
-        // Use Electron external browser authentication
-        toast.loading('Opening browser for Apple sign-in...', { duration: 2000 })
-        await electronAuth.loginWithPopup('apple')
+      const result = await passkeyAuth.registerWithPasskey(email, displayName)
+      if (result.success && result.user) {
+        setAuthProvider('passkey')
+        return { success: true }
       } else {
-        // Use Firebase redirect for web
-        const provider = new OAuthProvider('apple.com')
-        provider.addScope('email')
-        provider.addScope('name')
-        
-        toast.loading('Redirecting to Apple...', { duration: 2000 })
-        await signInWithRedirect(auth, provider)
+        return { success: false, error: result.error }
       }
-      
     } catch (error: any) {
-      console.error('Apple OAuth error:', error)
-      toast.error('Failed to sign in with Apple')
+      console.error('Passkey registration error:', error)
+      return { success: false, error: error.message || 'Passkey registration failed' }
+    } finally {
       setIsAuthenticating(false)
       setAuthProvider(null)
     }
@@ -221,8 +252,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticating,
     authProvider,
     signInWithGoogle,
-    signInWithGithub,
-    signInWithApple,
+    signInWithPasskey,
+    registerWithPasskey,
     logout,
   }
 

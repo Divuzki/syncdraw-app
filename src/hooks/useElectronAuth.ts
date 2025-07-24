@@ -23,7 +23,7 @@ export function useElectronAuth() {
   // Check if we're running in Electron
   const isElectron = typeof window !== 'undefined' && window.api?.auth;
 
-  const loginWithPopup = useCallback(async (provider: 'google' | 'github' | 'apple') => {
+  const loginWithPopup = useCallback(async (provider: 'google') => {
     if (!isElectron) {
       throw new Error('Electron auth is not available');
     }
@@ -39,12 +39,12 @@ export function useElectronAuth() {
         const authResult = await signInWithOAuthCode(result.code, provider, result.state);
         
         if (authResult.success && authResult.user) {
-          // Convert Firebase user to our User type
+          // Convert server user data to our User type
           const user: User = {
             id: authResult.user.uid,
-            displayName: authResult.user.displayName || 'Unknown User',
-            email: authResult.user.email || '',
-            photoURL: authResult.user.photoURL || undefined,
+            displayName: authResult.userData?.name || authResult.user.displayName || 'Unknown User',
+            email: authResult.userData?.email || authResult.user.email || '',
+            photoURL: authResult.userData?.picture || authResult.user.photoURL || undefined,
             createdAt: new Date(),
             lastActive: new Date(),
           };

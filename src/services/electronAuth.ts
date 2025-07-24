@@ -1,15 +1,16 @@
-import { auth } from './firebase'
-import { signInWithCustomToken } from 'firebase/auth'
+import { auth } from "./firebase";
+import { signInWithCustomToken } from "firebase/auth";
 
 interface OAuthCodeExchangeResponse {
-  success: boolean
-  customToken?: string
-  error?: string
+  success: boolean;
+  customToken?: string;
+  userData?: any; // User data from OAuth provider
+  error?: string;
 }
 
 /**
  * Exchange OAuth authorization code for Firebase custom token
- * This would typically be handled by your backend server
+ * Calls the backend server to exchange the code for a proper JWT token
  */
 export async function exchangeCodeForFirebaseToken(
   code: string,
@@ -17,41 +18,41 @@ export async function exchangeCodeForFirebaseToken(
   state?: string
 ): Promise<OAuthCodeExchangeResponse> {
   try {
-    // In a real implementation, you would send this to your backend
-    // which would:
-    // 1. Exchange the code for an access token with the OAuth provider
-    // 2. Get user info from the provider
-    // 3. Create or update the user in your system
-    // 4. Generate a Firebase custom token
-    
-    // For now, we'll simulate this process
-    console.log('Exchanging code for token:', { code, provider, state })
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // In production, replace this with actual backend call:
-    // const response = await fetch('/api/auth/exchange', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ code, provider, state })
-    // })
-    // const data = await response.json()
-    
-    // For demo purposes, we'll create a mock custom token
-    // In reality, this would come from your backend
-    const mockCustomToken = 'mock-custom-token-' + Date.now()
-    
+    console.log("Exchanging code for token:", { code, provider, state });
+
+    // Call the backend server to exchange the code for a custom token
+  const response = await fetch(`${import.meta.env.VITE_SOCKET_SERVER_URL}/auth/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, provider, state }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
+      throw new Error(
+        errorData.error || `HTTP ${response.status}: ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.customToken) {
+      throw new Error("No custom token received from server");
+    }
+
     return {
       success: true,
-      customToken: mockCustomToken
-    }
+      customToken: data.customToken,
+      userData: data.user, // Include the user data from server
+    };
   } catch (error) {
-    console.error('Token exchange error:', error)
+    console.error("Token exchange error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Token exchange failed'
-    }
+      error: error instanceof Error ? error.message : "Token exchange failed",
+    };
   }
 }
 
@@ -65,24 +66,32 @@ export async function signInWithOAuthCode(
 ) {
   try {
     // Exchange code for custom token
-    const tokenResponse = await exchangeCodeForFirebaseToken(code, provider, state)
-    
+    const tokenResponse = await exchangeCodeForFirebaseToken(
+      code,
+      provider,
+      state
+    );
+
     if (!tokenResponse.success || !tokenResponse.customToken) {
-      throw new Error(tokenResponse.error || 'Failed to get custom token')
+      throw new Error(tokenResponse.error || "Failed to get custom token");
     }
-    
+
     // Sign in to Firebase with custom token
-    const userCredential = await signInWithCustomToken(auth, tokenResponse.customToken)
-    
+    const userCredential = await signInWithCustomToken(
+      auth,
+      tokenResponse.customToken
+    );
+
     return {
       success: true,
-      user: userCredential.user
-    }
+      user: userCredential.user,
+      userData: tokenResponse.userData, // Pass through the user data from server
+    };
   } catch (error) {
-    console.error('OAuth sign-in error:', error)
+    console.error("OAuth sign-in error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Sign-in failed'
-    }
+      error: error instanceof Error ? error.message : "Sign-in failed",
+    };
   }
 }

@@ -1,6 +1,14 @@
+// Add this at the very top, before other imports
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load environment variables from .env file
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
-import * as path from 'path';
+import http from 'http';
+import { URL } from 'url';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -71,8 +79,9 @@ function createWindow(): void {
 // OAuth authentication handlers
 let authWindow: BrowserWindow | null = null;
 let authCallback: ((result: any) => void) | null = null;
+let callbackServer: http.Server | null = null;
 
-function createAuthWindow(authUrl: string): Promise<any> {
+function createAuthWindowWithServer(authUrl: string): Promise<any> {
   return new Promise((resolve, reject) => {
     // Store the callback
     authCallback = resolve;
@@ -83,6 +92,7 @@ function createAuthWindow(authUrl: string): Promise<any> {
     // Set up a timeout to reject if no response
     const timeout = setTimeout(() => {
       authCallback = null;
+      stopCallbackServer();
       reject(new Error('Authentication timeout'));
     }, 300000); // 5 minutes timeout
     
@@ -90,55 +100,618 @@ function createAuthWindow(authUrl: string): Promise<any> {
     const originalCallback = authCallback;
     authCallback = (result) => {
       clearTimeout(timeout);
+      stopCallbackServer();
       originalCallback(result);
     };
   });
 }
 
-// Handle deep links for OAuth callback
-app.setAsDefaultProtocolClient('syncdraw');
+function startCallbackServer(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    callbackServer = http.createServer((req, res) => {
+      if (req.url && req.url.startsWith('/auth/callback')) {
+        handleAuthCallback(req.url, res);
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
+      }
+    });
+    
+    // Try to bind to port 8080, fallback to random port
+    callbackServer.listen(8080, 'localhost', () => {
+      const address = callbackServer?.address();
+      const port = typeof address === 'object' && address ? address.port : 8080;
+      console.log(`OAuth callback server started on port ${port}`);
+      resolve(port);
+    });
+    
+    callbackServer.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        // Port 8080 is in use, try random port
+        callbackServer = http.createServer((req, res) => {
+          if (req.url && req.url.startsWith('/auth/callback')) {
+            handleAuthCallback(req.url, res);
+          } else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not Found');
+          }
+        });
+        
+        callbackServer.listen(0, 'localhost', () => {
+          const address = callbackServer?.address();
+          const port = typeof address === 'object' && address ? address.port : 0;
+          console.log(`OAuth callback server started on port ${port}`);
+          resolve(port);
+        });
+        
+        callbackServer.on('error', reject);
+      } else {
+        reject(err);
+      }
+    });
+  });
+}
 
-app.on('open-url', (event, url) => {
-  event.preventDefault();
-  handleAuthCallback(url);
-});
-
-app.on('second-instance', (event, commandLine) => {
-  // Handle protocol on Windows/Linux
-  const url = commandLine.find(arg => arg.startsWith('syncdraw://'));
-  if (url) {
-    handleAuthCallback(url);
+function stopCallbackServer() {
+  if (callbackServer) {
+    callbackServer.close();
+    callbackServer = null;
+    console.log('OAuth callback server stopped');
   }
-  
-  // Focus the main window
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-});
+}
 
-function handleAuthCallback(url: string) {
+function handleAuthCallback(url: string, res?: http.ServerResponse) {
   console.log('Received auth callback:', url);
   
   if (authCallback) {
     try {
-      const urlObj = new URL(url);
+      const urlObj = new URL(`http://localhost${url}`);
       const code = urlObj.searchParams.get('code');
       const error = urlObj.searchParams.get('error');
+      const errorDescription = urlObj.searchParams.get('error_description');
       const state = urlObj.searchParams.get('state');
       
+      // Send response to browser
+      if (res) {
+        if (error) {
+          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.end(`
+            <!DOCTYPE html>
+            <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Authentication Error - SyncDraw</title>
+                <style>
+                  * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                  }
+                  
+                  body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, hsl(221.2, 83.2%, 53.3%) 0%, hsl(217.2, 91.2%, 59.8%) 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: hsl(210, 40%, 98%);
+                  }
+                  
+                  .container {
+                    background: rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                  }
+                  
+                  .icon {
+                    width: 64px;
+                    height: 64px;
+                    background: rgba(239, 68, 68, 0.2);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 1.5rem;
+                    font-size: 2rem;
+                  }
+                  
+                  h1 {
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    margin-bottom: 0.5rem;
+                    color: hsl(210, 40%, 98%);
+                  }
+                  
+                  p {
+                    color: rgba(255, 255, 255, 0.8);
+                    margin-bottom: 1rem;
+                    line-height: 1.5;
+                  }
+                  
+                  .countdown {
+                    font-size: 0.875rem;
+                    color: rgba(255, 255, 255, 0.6);
+                    margin-bottom: 0;
+                  }
+                  
+                  .pulse {
+                    animation: pulse 2s infinite;
+                  }
+                  
+                  @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <div class="icon pulse">❌</div>
+                  <h1>Authentication Error</h1>
+                  <p>Error: ${error}</p>
+                  ${errorDescription ? `<p>Description: ${errorDescription}</p>` : ''}
+                  <p class="countdown">This window will close automatically in <span id="countdown">3</span> seconds</p>
+                </div>
+                
+                <script>
+                  let seconds = 3;
+                  const countdownEl = document.getElementById('countdown');
+                  
+                  const timer = setInterval(() => {
+                    seconds--;
+                    countdownEl.textContent = seconds;
+                    
+                    if (seconds <= 0) {
+                      clearInterval(timer);
+                      window.close();
+                    }
+                  }, 1000);
+                </script>
+              </body>
+            </html>
+          `);
+        } else if (code) {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`
+            <!DOCTYPE html>
+            <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Authentication Successful - SyncDraw</title>
+                <style>
+                  * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                  }
+                  
+                  body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, hsl(221.2, 83.2%, 53.3%) 0%, hsl(217.2, 91.2%, 59.8%) 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: hsl(210, 40%, 98%);
+                  }
+                  
+                  .container {
+                    background: rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                    animation: slideUp 0.3s ease-out;
+                  }
+                  
+                  .icon {
+                    width: 64px;
+                    height: 64px;
+                    background: rgba(34, 197, 94, 0.2);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 1.5rem;
+                    font-size: 2rem;
+                    animation: bounce 0.6s ease-out;
+                  }
+                  
+                  h1 {
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    margin-bottom: 0.5rem;
+                    color: hsl(210, 40%, 98%);
+                  }
+                  
+                  p {
+                    color: rgba(255, 255, 255, 0.8);
+                    margin-bottom: 1.5rem;
+                    line-height: 1.5;
+                  }
+                  
+                  
+                  @keyframes slideUp {
+                    from {
+                      transform: translateY(20px);
+                      opacity: 0;
+                    }
+                    to {
+                      transform: translateY(0);
+                      opacity: 1;
+                    }
+                  }
+                  
+                  @keyframes bounce {
+                    0%, 20%, 53%, 80%, 100% {
+                      transform: translate3d(0, 0, 0);
+                    }
+                    40%, 43% {
+                      transform: translate3d(0, -8px, 0);
+                    }
+                    70% {
+                      transform: translate3d(0, -4px, 0);
+                    }
+                    90% {
+                      transform: translate3d(0, -2px, 0);
+                    }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <div class="icon">✓</div>
+                  <h1>Authentication Successful!</h1>
+                  <p>Welcome to SyncDraw! You can close this window and return to the application.</p>
+                  
+                  </div>
+                
+               
+              </body>
+            </html>
+          `);
+        } else {
+          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.end(`
+            <!DOCTYPE html>
+            <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Authentication Error - SyncDraw</title>
+                <style>
+                  * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                  }
+                  
+                  body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, hsl(221.2, 83.2%, 53.3%) 0%, hsl(217.2, 91.2%, 59.8%) 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: hsl(210, 40%, 98%);
+                  }
+                  
+                  .container {
+                    background: rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                  }
+                  
+                  .icon {
+                    width: 64px;
+                    height: 64px;
+                    background: rgba(239, 68, 68, 0.2);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 1.5rem;
+                    font-size: 2rem;
+                  }
+                  
+                  h1 {
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    margin-bottom: 0.5rem;
+                    color: hsl(210, 40%, 98%);
+                  }
+                  
+                  p {
+                    color: rgba(255, 255, 255, 0.8);
+                    margin-bottom: 1rem;
+                    line-height: 1.5;
+                  }
+                  
+                  .countdown {
+                    font-size: 0.875rem;
+                    color: rgba(255, 255, 255, 0.6);
+                    margin-bottom: 0;
+                  }
+                  
+                  .pulse {
+                    animation: pulse 2s infinite;
+                  }
+                  
+                  @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <div class="icon pulse">❌</div>
+                  <h1>Authentication Error</h1>
+                  <p>No authorization code received</p>
+                  <p class="countdown">This window will close automatically in <span id="countdown">3</span> seconds</p>
+                </div>
+                
+                <script>
+                  let seconds = 3;
+                  const countdownEl = document.getElementById('countdown');
+                  
+                  const timer = setInterval(() => {
+                    seconds--;
+                    countdownEl.textContent = seconds;
+                    
+                    if (seconds <= 0) {
+                      clearInterval(timer);
+                      window.close();
+                    }
+                  }, 1000);
+                </script>
+              </body>
+            </html>
+          `);
+        }
+      }
+      
+      // Handle the callback
       if (error) {
-        authCallback({ success: false, error });
+        authCallback({ success: false, error: error, description: errorDescription });
       } else if (code) {
         authCallback({ success: true, code, state });
       } else {
         authCallback({ success: false, error: 'No authorization code received' });
       }
     } catch (err) {
+      if (res) {
+        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.end(`
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Authentication Error - SyncDraw</title>
+              <style>
+                * {
+                  margin: 0;
+                  padding: 0;
+                  box-sizing: border-box;
+                }
+                
+                body {
+                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  background: linear-gradient(135deg, hsl(221.2, 83.2%, 53.3%) 0%, hsl(217.2, 91.2%, 59.8%) 100%);
+                  min-height: 100vh;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: hsl(210, 40%, 98%);
+                }
+                
+                .container {
+                  background: rgba(255, 255, 255, 0.1);
+                  backdrop-filter: blur(16px);
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  border-radius: 16px;
+                  padding: 2rem;
+                  max-width: 400px;
+                  width: 90%;
+                  text-align: center;
+                  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                }
+                
+                .icon {
+                  width: 64px;
+                  height: 64px;
+                  background: rgba(239, 68, 68, 0.2);
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  margin: 0 auto 1.5rem;
+                  font-size: 2rem;
+                }
+                
+                h1 {
+                  font-size: 1.5rem;
+                  font-weight: 600;
+                  margin-bottom: 0.5rem;
+                  color: hsl(210, 40%, 98%);
+                }
+                
+                p {
+                  color: rgba(255, 255, 255, 0.8);
+                  margin-bottom: 1rem;
+                  line-height: 1.5;
+                }
+                
+                .countdown {
+                  font-size: 0.875rem;
+                  color: rgba(255, 255, 255, 0.6);
+                  margin-bottom: 0;
+                }
+                
+                .pulse {
+                  animation: pulse 2s infinite;
+                }
+                
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.5; }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="icon pulse">❌</div>
+                <h1>Authentication Error</h1>
+                <p>Invalid callback URL</p>
+                <p class="countdown">This window will close automatically in <span id="countdown">3</span> seconds</p>
+              </div>
+              
+              <script>
+                let seconds = 3;
+                const countdownEl = document.getElementById('countdown');
+                
+                const timer = setInterval(() => {
+                  seconds--;
+                  countdownEl.textContent = seconds;
+                  
+                  if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.close();
+                  }
+                }, 1000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
       authCallback({ success: false, error: 'Invalid callback URL' });
     }
     
     authCallback = null;
+  } else if (res) {
+    res.writeHead(400, { 'Content-Type': 'text/html' });
+    res.end(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Authentication Error - SyncDraw</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            body {
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: linear-gradient(135deg, hsl(221.2, 83.2%, 53.3%) 0%, hsl(217.2, 91.2%, 59.8%) 100%);
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: hsl(210, 40%, 98%);
+            }
+            
+            .container {
+              background: rgba(255, 255, 255, 0.1);
+              backdrop-filter: blur(16px);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 16px;
+              padding: 2rem;
+              max-width: 400px;
+              width: 90%;
+              text-align: center;
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            }
+            
+            .icon {
+              width: 64px;
+              height: 64px;
+              background: rgba(239, 68, 68, 0.2);
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 0 auto 1.5rem;
+              font-size: 2rem;
+            }
+            
+            h1 {
+              font-size: 1.5rem;
+              font-weight: 600;
+              margin-bottom: 0.5rem;
+              color: hsl(210, 40%, 98%);
+            }
+            
+            p {
+              color: rgba(255, 255, 255, 0.8);
+              margin-bottom: 1rem;
+              line-height: 1.5;
+            }
+            
+            .countdown {
+              font-size: 0.875rem;
+              color: rgba(255, 255, 255, 0.6);
+              margin-bottom: 0;
+            }
+            
+            .pulse {
+              animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.5; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="icon pulse">❌</div>
+            <h1>Authentication Error</h1>
+            <p>No active authentication session</p>
+            <p class="countdown">This window will close automatically in <span id="countdown">3</span> seconds</p>
+          </div>
+          
+          <script>
+            let seconds = 3;
+            const countdownEl = document.getElementById('countdown');
+            
+            const timer = setInterval(() => {
+              seconds--;
+              countdownEl.textContent = seconds;
+              
+              if (seconds <= 0) {
+                clearInterval(timer);
+                window.close();
+              }
+            }, 1000);
+          </script>
+        </body>
+      </html>
+    `);
   }
 }
 
@@ -235,14 +808,17 @@ ipcMain.handle('install-update', async () => {
 // Authentication IPC handlers
 ipcMain.handle('auth-login-external', async (event, provider: string) => {
   try {
+    // Start callback server first to get the actual port
+    const port = await startCallbackServer();
+    
     // Generate OAuth URLs based on provider
     let authUrl = '';
-    const redirectUri = 'syncdraw://auth/callback';
+    const redirectUri = `http://localhost:${port}/auth/callback`;
     const state = Math.random().toString(36).substring(2, 15);
     
     switch (provider) {
       case 'google':
-        const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
+        const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
         authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
           `client_id=${googleClientId}&` +
           `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -251,32 +827,12 @@ ipcMain.handle('auth-login-external', async (event, provider: string) => {
           `state=${state}`;
         break;
         
-      case 'github':
-        const githubClientId = process.env.VITE_GITHUB_CLIENT_ID || '';
-        authUrl = `https://github.com/login/oauth/authorize?` +
-          `client_id=${githubClientId}&` +
-          `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-          `scope=${encodeURIComponent('user:email')}&` +
-          `state=${state}`;
-        break;
-        
-      case 'apple':
-        const appleClientId = process.env.VITE_APPLE_CLIENT_ID || '';
-        authUrl = `https://appleid.apple.com/auth/authorize?` +
-          `client_id=${appleClientId}&` +
-          `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-          `response_type=code&` +
-          `scope=${encodeURIComponent('name email')}&` +
-          `response_mode=query&` +
-          `state=${state}`;
-        break;
-        
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
     
     console.log('Opening auth URL:', authUrl);
-    const result = await createAuthWindow(authUrl);
+    const result = await createAuthWindowWithServer(authUrl);
     
     if (result.success && result.code) {
       // Here you would typically exchange the code for tokens

@@ -18,7 +18,7 @@ class LocalAuthService {
   private readonly maxPollTime = 300000 // 5 minutes
 
   constructor() {
-    this.serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
+    this.serverUrl = import.meta.env.VITE_SOCKET_SERVER_URL
   }
 
   /**
