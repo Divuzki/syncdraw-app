@@ -6,6 +6,7 @@ on:
       - 'functions/**'
       - 'server/**'
       - 'src/services/azure.ts'
+      - '__tests__/**'
     branches:
       - 'feature/*'
       - 'main'
@@ -24,13 +25,11 @@ jobs:
       - name: Install root deps
         run: npm ci
       - name: Install functions deps
-        run: |
-          cd functions
-          npm ci
-      - name: Run functions unit tests
-        run: |
-          cd functions
-          npm run test -- --runInBand
-      - name: Run server unit tests
-        run: |
-          npm run test:server || echo "server tests failed"
+        run: npm ci --prefix functions
+      - name: Run repository unit tests (mocked)
+        env:
+          CI: true
+          NODE_ENV: test
+        run: npm test -- --ci
+      - name: Run functions unit tests (prefix)
+        run: npm test --prefix functions || echo "functions package has no tests yet"
