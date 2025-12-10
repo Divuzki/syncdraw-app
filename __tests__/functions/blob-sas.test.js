@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 jest.mock("@azure/storage-blob", () => {
   return {
     BlobServiceClient: jest.fn().mockImplementation(() => ({
