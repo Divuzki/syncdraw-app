@@ -7,8 +7,6 @@ const {
 const { DefaultAzureCredential } = require("@azure/identity");
 
 const credential = new DefaultAzureCredential();
-const accountName =
-  process.env.AZURE_STORAGE_ACCOUNT || process.env.VITE_AZURE_STORAGE_ACCOUNT;
 
 async function handler(request, context) {
   try {
@@ -19,6 +17,9 @@ async function handler(request, context) {
     const ttlSeconds = body.ttlSeconds || 900;
     const userId = body.userId || "unknown";
 
+    const accountName =
+      process.env.AZURE_STORAGE_ACCOUNT ||
+      process.env.VITE_AZURE_STORAGE_ACCOUNT;
     if (!accountName || !container) {
       return {
         status: 400,

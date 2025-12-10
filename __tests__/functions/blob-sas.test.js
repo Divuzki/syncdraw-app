@@ -13,6 +13,13 @@ jest.mock("@azure/storage-blob", () => {
   };
 });
 
+jest.mock("@azure/functions", () => ({ app: { http: jest.fn() } }), {
+  virtual: true,
+});
+jest.mock("@azure/identity", () => ({ DefaultAzureCredential: jest.fn() }), {
+  virtual: true,
+});
+
 const { handler } = require("../../functions/blob-sas/index.js");
 
 describe("blob-sas function", () => {
@@ -20,7 +27,6 @@ describe("blob-sas function", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.AZURE_STORAGE_ACCOUNT = "acct";
   });
 
   it("returns sasUrl and metadata", async () => {
@@ -48,3 +54,4 @@ describe("blob-sas function", () => {
     expect(res.status).toBe(400);
   });
 });
+process.env.AZURE_STORAGE_ACCOUNT = "acct";

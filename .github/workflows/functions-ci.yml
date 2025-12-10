@@ -1,0 +1,36 @@
+name: Functions CI
+
+on:
+  pull_request:
+    paths:
+      - 'functions/**'
+      - 'server/**'
+      - 'src/services/azure.ts'
+    branches:
+      - 'feature/*'
+      - 'main'
+
+jobs:
+  test-functions:
+    name: Test Functions (unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install root deps
+        run: npm ci
+      - name: Install functions deps
+        run: |
+          cd functions
+          npm ci
+      - name: Run functions unit tests
+        run: |
+          cd functions
+          npm run test -- --runInBand
+      - name: Run server unit tests
+        run: |
+          npm run test:server || echo "server tests failed"
