@@ -61,21 +61,64 @@ const pendingOAuthRequests = new Map();
 const activeSessions = new Map();
 const userSessions = new Map();
 
-// Socket authentication middleware
-io.use((socket, next) => {
-  const userId = socket.handshake.auth.userId;
-  const displayName = socket.handshake.auth.displayName;
-  const photoURL = socket.handshake.auth.photoURL;
+const MOCK_MODE =
+  process.env.VITE_USE_MOCK_DATA === "true" ||
+  process.env.USE_MOCK_DATA === "true"
+    ? true
+    : false;
 
-  if (!userId) {
-    return next(new Error("Authentication error"));
+async function socketAuthMiddleware(socket, next) {
+  if (MOCK_MODE) {
+    const userId = socket.handshake.auth.userId;
+    const displayName = socket.handshake.auth.displayName;
+    const photoURL = socket.handshake.auth.photoURL;
+    if (!userId) {
+      console.error(
+        JSON.stringify({
+          event: "socket_auth_failure",
+          mode: "mock",
+          reason: "missing_userId",
+        })
+      );
+      return next(new Error("Authentication error"));
+    }
+    socket.userId = userId;
+    socket.displayName = displayName;
+    socket.photoURL = photoURL;
+    return next();
   }
 
-  socket.userId = userId;
-  socket.displayName = displayName;
-  socket.photoURL = photoURL;
-  next();
-});
+  try {
+    const idToken = socket.handshake.auth && socket.handshake.auth.idToken;
+    if (!idToken) {
+      console.error(
+        JSON.stringify({
+          event: "socket_auth_failure",
+          mode: "real",
+          reason: "missing_idToken",
+        })
+      );
+      return next(new Error("Authentication error"));
+    }
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    socket.userId = decoded.uid;
+    socket.displayName = decoded.name || decoded.email || decoded.uid;
+    socket.photoURL = decoded.picture || null;
+    return next();
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        event: "socket_auth_failure",
+        mode: "real",
+        reason: "verify_failed",
+        error: e && e.message ? e.message : "unknown",
+      })
+    );
+    return next(new Error("Authentication error"));
+  }
+}
+
+io.use(socketAuthMiddleware);
 
 // WebSocket connection handling
 io.on("connection", (socket) => {
@@ -642,3 +685,5 @@ server.listen(PORT, () => {
   console.log(`WebSocket server: ws://localhost:${PORT}`);
   console.log(`OAuth callback: http://localhost:${PORT}/auth/callback`);
 });
+
+module.exports = { app, server, io, socketAuthMiddleware };
