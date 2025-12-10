@@ -35,6 +35,7 @@ Syncdaw is a desktop application that enables music producers using the same DAW
 ## 🛠 Tech Stack
 
 ### Frontend
+
 - **Desktop App**: Electron + React + TypeScript
 - **Build Tool**: Vite for fast development
 - **Styling**: TailwindCSS with dark/light theme support
@@ -43,18 +44,22 @@ Syncdaw is a desktop application that enables music producers using the same DAW
 - **Animations**: Framer Motion
 
 ### Backend (Current Development)
+
 - **Authentication**: Firebase Auth (Google, Passkey)
 - **Real-time**: Socket.IO WebSocket server (Node.js)
 - **Development**: Mock services for rapid prototyping
 
 ### Backend (Planned Production)
+
 - **Cloud Functions**: Azure Functions
 - **Database**: Azure CosmosDB
 - **File Storage**: Azure Blob Storage
+  - Client uses SAS tokens via Azure Functions endpoint `/api/blob-sas` and does not store account keys
 - **VM Orchestration**: Azure Compute
 - **Real-time**: Socket.IO on Azure Web Apps
 
 ### Development Tools
+
 - **Testing**: Jest + React Testing Library + Cypress
 - **Code Quality**: ESLint + TypeScript
 - **Package Management**: npm
@@ -92,6 +97,7 @@ npm install
 ### 3. Azure Infrastructure Setup
 
 #### Storage Account
+
 ```bash
 # Create resource group
 az group create --name syncdaw-rg --location eastus
@@ -110,6 +116,7 @@ az storage account show-connection-string \
 ```
 
 #### CosmosDB Setup
+
 ```bash
 # Create CosmosDB account
 az cosmosdb create \
@@ -132,6 +139,7 @@ az cosmosdb sql container create \
 ```
 
 #### Azure Functions
+
 ```bash
 # Create function app
 az functionapp create \
@@ -145,6 +153,7 @@ az functionapp create \
 ```
 
 #### WebSocket Server (Azure Web App)
+
 ```bash
 # Create app service plan
 az appservice plan create \
@@ -184,6 +193,7 @@ az webapp deployment source config-zip \
 ## 🚀 Quick Start (Development Mode)
 
 ### 1. Clone and Install
+
 ```bash
 git clone <repository-url>
 cd syncdaw-app
@@ -191,6 +201,7 @@ npm install
 ```
 
 ### 2. Environment Setup
+
 ```bash
 # Copy environment template
 cp .env.example .env
@@ -200,23 +211,27 @@ cp .env.example .env
 ```
 
 ### 3. Start Development Servers
+
 ```bash
 # Start both WebSocket server and Electron app
 npm run dev
 ```
 
 This will:
+
 - Start the WebSocket server on `http://localhost:3001`
 - Start the Vite dev server on `http://localhost:5173`
 - Launch the Electron app with hot reload
 
 ### 4. Production Build
+
 ```bash
 npm run build
 npm run build:electron
 ```
 
 ### 5. Testing
+
 ```bash
 # Unit tests
 npm test
@@ -322,17 +337,20 @@ USE_MOCK_DATA=false npm run dev
 ## 🧪 Testing Guide
 
 ### Unit Testing
+
 - Tests are located in `__tests__/`
 - Run with `npm test`
 - Uses Jest with React Testing Library
 - Focus on component logic and user interactions
 
 ### E2E Testing
+
 - E2E tests use Cypress (located in `cypress/`)
 - Tests cover authentication flow and core user journeys
 - Run with `npm run test:e2e`
 
 ### Manual Testing Checklist
+
 - [ ] Authentication with Firebase providers works
 - [ ] WebSocket connection establishes
 - [ ] Session creation and navigation
@@ -349,6 +367,7 @@ USE_MOCK_DATA=false npm run dev
 - Azure Functions validate requests
 - File uploads are scanned and validated
 - WebSocket connections are authenticated
+  - Socket.IO handshake validates Firebase ID token when not in mock mode
 
 ## 🚢 Deployment
 
@@ -365,8 +384,9 @@ npm run build:electron -- --linux
 ```
 
 **Note**: Before building, ensure you have the required icon files in the `build/` directory:
+
 - `icon.icns` (macOS)
-- `icon.ico` (Windows) 
+- `icon.ico` (Windows)
 - `icon.png` (Linux)
 
 See `build/README.md` for detailed icon requirements.
@@ -376,6 +396,7 @@ See `build/README.md` for detailed icon requirements.
 **Current State**: Development uses local WebSocket server
 
 **Production Plan**:
+
 - Azure Functions: Auto-deployed via GitHub Actions
 - WebSocket server: Deployed to Azure Web Apps
 - Static assets: Served from Azure CDN
@@ -385,6 +406,7 @@ See `build/README.md` for detailed icon requirements.
 ## 🗺️ Development Roadmap
 
 ### Phase 1: Core Infrastructure ✅
+
 - [x] Electron + React setup
 - [x] Firebase Authentication
 - [x] WebSocket server
@@ -392,6 +414,7 @@ See `build/README.md` for detailed icon requirements.
 - [x] Basic UI/UX implementation
 
 ### Phase 2: Backend Integration 🔄
+
 - [ ] Azure Blob Storage integration
 - [ ] Azure Functions deployment
 - [ ] CosmosDB setup and integration
@@ -399,6 +422,7 @@ See `build/README.md` for detailed icon requirements.
 - [ ] File versioning system
 
 ### Phase 3: Advanced Features 📋
+
 - [ ] VM provisioning for DAW hosting
 - [ ] Advanced collaboration tools
 - [ ] Plugin system for DAW integration
@@ -406,6 +430,7 @@ See `build/README.md` for detailed icon requirements.
 - [ ] Advanced security features
 
 ### Phase 4: Production Ready 🎯
+
 - [ ] Comprehensive testing suite
 - [ ] Performance monitoring
 - [ ] Auto-updater implementation
