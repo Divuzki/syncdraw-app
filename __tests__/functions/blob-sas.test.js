@@ -30,6 +30,7 @@ describe("blob-sas function", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.AZURE_STORAGE_ACCOUNT = "acct";
   });
 
   it("returns sasUrl and metadata", async () => {
@@ -57,4 +58,3 @@ describe("blob-sas function", () => {
     expect(res.status).toBe(400);
   });
 });
-process.env.AZURE_STORAGE_ACCOUNT = "acct";
